@@ -306,15 +306,15 @@ if(pimAttachList){
     var name = btn.getAttribute("data-name");
     if(!pid || !name) return;
     btn.disabled = true;
-    fetch("/api/products/attachments/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: pid, name: name })
-    })
-      .then(function(r){ return r.json(); })
+    var postFn = (typeof apiPostJson === "function") ? apiPostJson : (typeof apiPost === "function" ? apiPost : null);
+    if (!postFn) {
+      btn.disabled = false;
+      return;
+    }
+    postFn("/api/products/attachments/delete", { id: pid, name: name })
       .then(function(data){
-        if(!data.ok){
-          showToast(data.error || "첨부파일 삭제에 실패했습니다.");
+        if(!data || !data.ok){
+          showToast((data && data.error) || "첨부파일 삭제에 실패했습니다.");
           btn.disabled = false;
           return;
         }
@@ -565,21 +565,21 @@ if(pimForm){
       payload.procurement = false;
     }
     pimSaveBtn.disabled = true;
-    fetch("/api/products/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-      .then(function(r){ return r.json().then(function(data){ return { status: r.status, data: data }; }); })
-      .then(function(res){
-        if(!res.data.ok){
+    var postFn = (typeof apiPostJson === "function") ? apiPostJson : (typeof apiPost === "function" ? apiPost : null);
+    if (!postFn) {
+      pimSaveBtn.disabled = false;
+      return;
+    }
+    postFn("/api/products/save", payload)
+      .then(function(data){
+        if(!data || !data.ok){
           pimSaveBtn.disabled = false;
-          var msg = (res.data.errors && res.data.errors.join(" / ")) || res.data.error || "저장에 실패했습니다.";
+          var msg = (data && data.errors && data.errors.join(" / ")) || (data && data.error) || "저장에 실패했습니다.";
           pimFormError.textContent = msg;
           pimFormError.classList.add("show");
           return;
         }
-        var product = res.data.product;
+        var product = data.product;
         var pendingImg = (pimImageInput && pimImageInput.files && pimImageInput.files.length) ? pimImageInput.files[0] : null;
         var pendingFiles = (pimAttachInput && pimAttachInput.files && pimAttachInput.files.length) ? pimAttachInput.files : null;
         

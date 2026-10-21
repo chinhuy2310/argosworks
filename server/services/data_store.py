@@ -334,12 +334,48 @@ def add_record_attachment(record_id, filename, file_size=0):
 
 
 def _get_record_attachments(record_id):
-    """레코드의 첨부파일 목록을 filename 리스트로 반환 (기존 API 호환)."""
+    """레코드의 첨부파일 목록을 상세 객체 리스트로 반환한다."""
+    import urllib.parse
     rows = query(
-        "SELECT filename FROM record_attachments WHERE record_id = ? ORDER BY id",
+        "SELECT id, filename, file_size, uploaded_at FROM record_attachments WHERE record_id = ? ORDER BY id",
         (record_id,)
     )
-    return [r["filename"] for r in rows]
+    return [
+        {
+            "id": r["id"],
+            "filename": r["filename"],
+            "name": r["filename"],
+            "size": r.get("file_size") or 0,
+            "url": f"/api/attachments/{record_id}/{urllib.parse.quote(r['filename'])}",
+            "isLocal": True,
+            "source": "local",
+            "uploadedAt": r.get("uploaded_at") or ""
+        }
+        for r in rows
+    ]
+
+
+def delete_record_attachment(record_id, attachment_id):
+    """레코드의 첨부파일을 DB 및 디스크에서 삭제한다."""
+    rows = query(
+        "SELECT filename FROM record_attachments WHERE id = ? AND record_id = ?",
+        (attachment_id, record_id)
+    )
+    if not rows:
+        return False, "첨부파일을 찾을 수 없습니다."
+    fname = rows[0]["filename"]
+    execute(
+        "DELETE FROM record_attachments WHERE id = ? AND record_id = ?",
+        (attachment_id, record_id)
+    )
+    from config import ATTACH_DIR
+    fpath = os.path.join(ATTACH_DIR, str(record_id), fname)
+    if os.path.isfile(fpath):
+        try:
+            os.remove(fpath)
+        except Exception:
+            pass
+    return True, None
 
 
 def append_record(record):

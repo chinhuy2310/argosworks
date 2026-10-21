@@ -235,9 +235,18 @@ function apiScheduleGet(){
   });
 }
 function apiSchedulePost(path, body){
+  if (typeof apiPostJson === "function") {
+    return apiPostJson(path, body).then(function(data){
+      return { status: (data && data.ok) ? 200 : (data && data.error ? 400 : 200), data: data };
+    });
+  }
+  var csrfToken = sessionStorage.getItem("argosCsrfToken") || localStorage.getItem("argosCsrfToken") || "";
+  var headers = Object.assign({ "Content-Type": "application/json" }, authHeaders());
+  if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   return fetch(path, {
     method: "POST",
-    headers: Object.assign({ "Content-Type": "application/json" }, authHeaders()),
+    credentials: "same-origin",
+    headers: headers,
     body: JSON.stringify(body)
   }).then(function(r){
     return r.json().then(function(data){ return { status: r.status, data: data }; });

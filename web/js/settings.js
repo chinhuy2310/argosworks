@@ -755,15 +755,9 @@ async function inspectJiraWizard() {
   resBox.innerHTML = '<div style="color:var(--primary, #0066cc);">🌐 Jira Cloud 연결 및 조직 데이터 스캔 중...</div>';
 
   try {
-    var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
-    var resp = await fetch("/api/jira/inspect", {
-      method: "POST",
-      headers: Object.assign({ "Content-Type": "application/json" }, authH),
-      body: JSON.stringify({ base_url: baseUrl, email: email, api_token: token })
-    });
-    var data = await resp.json();
-    if (!data.ok) {
-      resBox.innerHTML = '<div style="color:var(--danger, #e53935); padding:8px; background:rgba(229,57,53,0.08); border-radius:6px;">❌ ' + escapeHtml(data.error || "스캔 실패") + '</div>';
+    var data = await apiPostJson("/api/jira/inspect", { base_url: baseUrl, email: email, api_token: token });
+    if (!data || !data.ok) {
+      resBox.innerHTML = '<div style="color:var(--danger, #e53935); padding:8px; background:rgba(229,57,53,0.08); border-radius:6px;">❌ ' + escapeHtml((data && data.error) || "스캔 실패") + '</div>';
       window.__JIRA_STATUS__ = window.__JIRA_STATUS__ || {};
       window.__JIRA_STATUS__.connected = false;
       return;
@@ -969,12 +963,7 @@ function initReportTemplateEngine() {
     btnReset.addEventListener("click", async function(){
       if (!confirm("커스텀 템플릿을 삭제하고 기본 내장 서식으로 복원하시겠습니까?")) return;
       try {
-        var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
-        var resp = await fetch("/api/reports/template/delete", {
-          method: "POST",
-          headers: authH
-        });
-        var result = await resp.json();
+        var result = await apiPostJson("/api/reports/template/delete", {});
         if (result && result.ok) {
           showToast("기본 서식으로 복원되었습니다.");
           await checkReportTemplateStatus();
@@ -1763,18 +1752,12 @@ async function triggerRestoreBackup(filename) {
 
   showToast("⏳ 1-Click CSDL 복구 진행 중...");
   try {
-    var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
-    var res = await fetch("/api/admin/backups/restore", {
-      method: "POST",
-      headers: Object.assign({ "Content-Type": "application/json" }, authH),
-      body: JSON.stringify({ filename: filename })
-    });
-    var data = await res.json();
-    if (data.ok) {
+    var data = await apiPostJson("/api/admin/backups/restore", { filename: filename });
+    if (data && data.ok) {
       alert("✅ CSDL 복구가 성공적으로 완료되었습니다!\n(복원 전 안전 백업: " + (data.safety_backup || "완료") + ")\n\n화면을 새로고침합니다.");
       window.location.reload();
     } else {
-      alert("❌ 복구 실패: " + (data.error || "알 수 없는 오류"));
+      alert("❌ 복구 실패: " + ((data && data.error) || "알 수 없는 오류"));
     }
   } catch (err) {
     alert("❌ 복구 통신 오류: " + err.message);
@@ -1796,18 +1779,12 @@ function initBackupUI() {
       btnManual.disabled = true;
       btnManual.innerHTML = "<span>⏳</span> 백업 생성 중...";
       try {
-        var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
-        var res = await fetch("/api/admin/backups/create", {
-          method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, authH),
-          body: JSON.stringify({ note: note })
-        });
-        var data = await res.json();
-        if (data.ok) {
+        var data = await apiPostJson("/api/admin/backups/create", { note: note });
+        if (data && data.ok) {
           showToast("✅ 새 백업이 안전하게 생성되었습니다: " + data.filename);
           await loadAdminBackups();
         } else {
-          alert("백업 생성 실패: " + (data.error || "알 수 없는 오류"));
+          alert("백업 생성 실패: " + ((data && data.error) || "알 수 없는 오류"));
         }
       } catch (err) {
         alert("통신 오류: " + err.message);
@@ -1830,20 +1807,14 @@ function initBackupUI() {
       btnSaveDir.disabled = true;
       btnSaveDir.textContent = "저장 중...";
       try {
-        var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
-        var res = await fetch("/api/admin/backups/config", {
-          method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, authH),
-          body: JSON.stringify({ backup_dir: newPath })
-        });
-        var data = await res.json();
-        if (data.ok) {
+        var data = await apiPostJson("/api/admin/backups/config", { backup_dir: newPath });
+        if (data && data.ok) {
           showToast("✅ 백업 저장 경로가 성공적으로 설정되었습니다.");
           if (inputDir) inputDir.value = data.backup_dir;
           if (badgeCustom) badgeCustom.style.display = data.is_custom ? "inline-block" : "none";
           await loadAdminBackups();
         } else {
-          alert("경로 변경 실패: " + (data.error || "알 수 없는 오류"));
+          alert("경로 변경 실패: " + ((data && data.error) || "알 수 없는 오류"));
         }
       } catch (err) {
         alert("통신 오류: " + err.message);
@@ -1859,20 +1830,14 @@ function initBackupUI() {
       if (!confirm("백업 저장 위치를 시스템 기본 경로(./data/backups)로 초기화하시겠습니까?")) return;
       btnResetDir.disabled = true;
       try {
-        var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
-        var res = await fetch("/api/admin/backups/config", {
-          method: "POST",
-          headers: Object.assign({ "Content-Type": "application/json" }, authH),
-          body: JSON.stringify({ backup_dir: "" })
-        });
-        var data = await res.json();
-        if (data.ok) {
+        var data = await apiPostJson("/api/admin/backups/config", { backup_dir: "" });
+        if (data && data.ok) {
           showToast("✅ 기본 백업 경로로 초기화되었습니다.");
           if (inputDir) inputDir.value = data.backup_dir;
           if (badgeCustom) badgeCustom.style.display = "none";
           await loadAdminBackups();
         } else {
-          alert("초기화 실패: " + (data.error || "알 수 없는 오류"));
+          alert("초기화 실패: " + ((data && data.error) || "알 수 없는 오류"));
         }
       } catch (err) {
         alert("통신 오류: " + err.message);

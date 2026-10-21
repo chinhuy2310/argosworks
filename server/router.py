@@ -1287,10 +1287,11 @@ def handle_post_issue_attachment(handler, raw_body, ip):
         handler._send_json(400, {"ok": False, "error": "업로드할 파일이 없습니다."})
         return
 
-    clean_id = issue_key.strip().upper().lstrip("#").replace("REC-", "").replace("LOCAL-", "").replace("JIRA-", "")
-    local_rec = None
-    if clean_id.isdigit():
-        local_rec = get_record_by_id(int(clean_id))
+    local_rec = find_record_by_key_or_code(issue_key)
+    if not local_rec:
+        clean_id = issue_key.strip().upper().lstrip("#").replace("REC-", "").replace("LOCAL-", "").replace("JIRA-", "")
+        if clean_id.isdigit():
+            local_rec = get_record_by_id(int(clean_id))
 
     if local_rec:
         from utils.file_ops import sanitize_filename
@@ -1388,6 +1389,36 @@ def handle_post_issue_attachment(handler, raw_body, ip):
         "files": uploaded_files,
         "count": len(uploaded_files)
     })
+
+
+def handle_delete_record_attachment(handler, raw_body, ip):
+    """로컬 카드의 첨부파일을 삭제한다."""
+    session = handler._get_session_or_401()
+    if not session:
+        return
+    try:
+        body = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+    except Exception:
+        body = {}
+    key = (body.get("key") or body.get("issue_key") or body.get("card_code") or "").strip()
+    attach_id = body.get("attachment_id") or body.get("id")
+    if not key or not attach_id:
+        handler._send_json(400, {"ok": False, "error": "업무 키와 첨부파일 ID가 필요합니다."})
+        return
+    rec = find_record_by_key_or_code(key)
+    if not rec:
+        handler._send_json(404, {"ok": False, "error": f"기록 '{key}'을 찾을 수 없습니다."})
+        return
+    from services.auth import can_modify_record
+    if not can_modify_record(session, rec):
+        handler._send_json(403, {"ok": False, "error": "해당 업무 카드의 첨부파일을 삭제할 권한이 없습니다."})
+        return
+    from services.data_store import delete_record_attachment
+    ok, err = delete_record_attachment(rec["id"], int(attach_id))
+    if not ok:
+        handler._send_json(400, {"ok": False, "error": err or "첨부파일 삭제 실패"})
+        return
+    handler._send_json(200, {"ok": True, "message": "첨부파일이 삭제되었습니다."})
 
 
 def handle_post_record_update(handler, raw_body, ip):
@@ -2644,6 +2675,8 @@ def match_post(path):
         return handle_post_issue_transition
     elif path == "/api/issues/attachments":
         return handle_post_issue_attachment
+    elif path == "/api/records/attachments/delete":
+        return handle_delete_record_attachment
     elif path == "/api/records/delete":
         return handle_delete_record
     elif path == "/api/records/update":

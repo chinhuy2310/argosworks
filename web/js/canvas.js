@@ -1445,6 +1445,30 @@
     event.target.value = "";
   };
 
+  // --- Delete Local Attachment ---
+  window.deleteLocalAttachment = function(key, attachmentId){
+    if(!key || !attachmentId) return;
+    if(!confirm("해당 첨부파일을 삭제하시겠습니까?")) return;
+
+    var postFn = (typeof apiPostJson === "function") ? apiPostJson : (typeof apiPost === "function" ? apiPost : null);
+    if(!postFn) return;
+
+    postFn("/api/records/attachments/delete", { key: key, attachment_id: attachmentId })
+      .then(function(res){
+        if(res && res.ok){
+          if(typeof showToast === "function") showToast("✅ 첨부파일이 삭제되었습니다.");
+          window.showIssueInCanvas(key);
+          if(typeof loadRecords === "function") loadRecords();
+        } else {
+          var errMsg = (res && res.error) || "첨부파일 삭제 실패";
+          if(typeof showToast === "function") showToast("⚠️ " + errMsg, 1500, true);
+        }
+      })
+      .catch(function(err){
+        if(typeof showToast === "function") showToast("⚠️ 삭제 통신 오류: " + (err.message || String(err)), 1500, true);
+      });
+  };
+
   // --- Canvas Drag & Drop Overlay Handler ---
   function initCanvasDragAndDrop(){
     var canvasPanel = document.getElementById("canvasPanel");
