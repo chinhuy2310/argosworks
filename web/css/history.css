@@ -1,0 +1,587 @@
+/* =========================================================
+   history.css — Work History & Daily Activity Explorer (Admin)
+   ARGOS WORKS / JARVIS
+   ========================================================= */
+
+.history-container {
+  max-width: 1560px;
+  margin: 0 auto;
+}
+
+.history-header {
+  margin-bottom: 20px;
+}
+
+.history-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.history-subtitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Toolbar Controls */
+.history-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Date Navigator Group (< YYYY-MM-DD > + Today) */
+.history-date-group {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  overflow: hidden;
+  height: 36px;
+  box-shadow: var(--shadow);
+  transition: border-color 0.15s ease;
+}
+
+.history-date-group:focus-within {
+  border-color: var(--tab-settings, #0284c7);
+}
+
+.history-date-btn {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  width: 32px;
+  height: 100%;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  user-select: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.history-date-btn:hover {
+  background: var(--code-bg);
+  color: var(--tab-settings, #0284c7);
+}
+
+.history-date-btn:active {
+  transform: scale(0.92);
+}
+
+.history-date-btn-prev {
+  border-right: 1px solid var(--line);
+}
+
+.history-date-btn-next {
+  border-left: 1px solid var(--line);
+}
+
+.history-date-input {
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  padding: 0 10px;
+  height: 100%;
+}
+
+.history-btn-today {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-btn-today:hover {
+  color: var(--ink);
+  border-color: var(--tab-settings, #0284c7);
+  background: var(--tab-settings-soft, #e0f2fe);
+}
+
+
+
+/* Content Area & Table */
+.history-content {
+  margin-top: 14px;
+}
+
+.history-table-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: var(--shadow);
+}
+
+.history-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.history-table th {
+  background: var(--code-bg);
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--ink-faint);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 16px;
+  white-space: nowrap;
+}
+
+.history-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.history-table tr:last-child td {
+  border-bottom: none;
+}
+
+.history-table tr:hover td {
+  background: var(--code-bg);
+}
+
+/* Cell Elements */
+.hist-key {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--stat-info);
+  background: var(--stat-info-soft);
+  padding: 3px 8px;
+  border-radius: 5px;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.hist-summary-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.hist-summary-title {
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.hist-summary-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.hist-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+.hist-status-todo { background: #e2e8f0; color: #475569; }
+.hist-status-inprog { background: #e0f2fe; color: #0284c7; }
+.hist-status-done { background: #dcfce7; color: #15803d; }
+
+[data-theme="dark"] .hist-status-todo { background: #334155; color: #cbd5e1; }
+[data-theme="dark"] .hist-status-inprog { background: #0c2d48; color: #38bdf8; }
+[data-theme="dark"] .hist-status-done { background: #143823; color: #4ade80; }
+
+/* Action Badges (Choivis Unified Design) */
+.act-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2.5px 8px;
+  border-radius: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.act-badge-created {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.act-badge-status_change {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+.act-badge-comment {
+  background: rgba(124, 58, 237, 0.12);
+  color: #7c3aed;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+}
+
+.act-badge-attachment {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.act-badge-attachment_deleted {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.act-badge-updated {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.act-badge-schedule {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+/* Dark Mode Action Badges */
+[data-theme="dark"] .act-badge-created {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+[data-theme="dark"] .act-badge-status_change {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+[data-theme="dark"] .act-badge-comment {
+  background: rgba(167, 139, 250, 0.2);
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.45);
+}
+
+[data-theme="dark"] .act-badge-attachment {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+[data-theme="dark"] .act-badge-attachment_deleted {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+[data-theme="dark"] .act-badge-updated {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+[data-theme="dark"] .act-badge-schedule {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+/* Status flow arrow (진행 ➔ 완료) */
+.act-status-flow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+}
+
+.act-status-arrow {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+/* User Author Cell */
+.hist-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.hist-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--tab-settings, #0284c7);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.hist-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hist-author-name {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hist-author-dept {
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.hist-time {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Empty State */
+.history-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.history-empty-icon {
+  font-size: 38px;
+  margin-bottom: 12px;
+  opacity: 0.85;
+}
+
+.history-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.history-empty-desc {
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+.history-quick-date-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: all 0.15s ease;
+}
+
+.history-quick-date-btn:hover {
+  border-color: var(--tab-settings, #0284c7);
+  background: var(--tab-settings-soft, #e0f2fe);
+  color: var(--tab-settings, #0284c7);
+  transform: translateY(-1px);
+}
+
+/* Responsive / Mobile View (Card-based layout) */
+@media (max-width: 768px) {
+  .history-header {
+    margin-bottom: 12px;
+  }
+  .history-title-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .history-subtitle {
+    font-size: 14px;
+  }
+  .history-toolbar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  .history-date-group {
+    flex: 1;
+    max-width: none;
+    height: 38px;
+  }
+  .history-date-input {
+    width: 100%;
+    font-size: 13.5px;
+  }
+  .history-btn-today {
+    height: 38px;
+    flex-shrink: 0;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
+  /* Activity Table -> Mobile Card List */
+  .history-table-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    overflow-x: visible;
+  }
+  table.history-table {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .history-table thead {
+    display: none;
+  }
+  .history-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  .history-table tr.hist-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: background 0.12s ease, border-color 0.12s ease;
+    position: relative;
+  }
+  .history-table tr.hist-row:hover {
+    border-color: var(--line-strong);
+  }
+  .history-table td {
+    display: block;
+    padding: 0 !important;
+    border: none !important;
+    width: 100% !important;
+    background: transparent !important;
+  }
+
+  /* Header of card: Key on left, Time on right */
+  .history-table td.hist-col-key {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100% !important;
+  }
+  .history-table td.hist-col-time {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    width: auto !important;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  /* Summary */
+  .history-table td.hist-col-summary {
+    min-width: 0;
+  }
+  .history-table .hist-summary-wrap {
+    min-width: 0;
+    gap: 4px;
+  }
+  .history-table .hist-summary-title {
+    font-size: 14px;
+    font-weight: 700;
+    word-break: break-word;
+  }
+  .history-table .hist-summary-meta {
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  /* Action Box */
+  .history-table td.hist-col-action {
+    background: var(--code-bg) !important;
+    border-radius: 6px;
+    padding: 8px 10px !important;
+    margin: 2px 0;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  /* Author row */
+  .history-table td.hist-col-author {
+    display: flex;
+    align-items: center;
+    padding-top: 6px !important;
+    border-top: 1px dashed var(--line) !important;
+  }
+  .history-table .hist-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .history-table .hist-avatar {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+  .history-table .hist-author-name {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .history-table .hist-author-dept {
+    font-size: 10.5px;
+    color: var(--ink-faint);
+  }
+}

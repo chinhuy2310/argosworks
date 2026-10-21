@@ -1,0 +1,2696 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARGOS WORKS</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+<link rel="stylesheet" href="css/tom-select.default.min.css">
+<script src="js/tom-select.complete.min.js"></script>
+
+<link rel="stylesheet" href="css/variables.css?v=4.2">
+<link rel="stylesheet" href="css/layout.css?v=5.7">
+<link rel="stylesheet" href="css/dashboard.css?v=7.5">
+<link rel="stylesheet" href="css/form.css?v=4.6">
+<link rel="stylesheet" href="css/calendar.css?v=7.3">
+<link rel="stylesheet" href="css/pim.css?v=4.5">
+<link rel="stylesheet" href="css/home.css?v=5.5">
+<link rel="stylesheet" href="css/settings.css?v=4.5">
+<link rel="stylesheet" href="css/history.css?v=1.2">
+<link rel="stylesheet" href="css/components.css?v=4.3">
+<link rel="stylesheet" href="css/chat.css?v=2.1">
+<link rel="stylesheet" href="css/canvas.css?v=3.1">
+<script>
+  (function(){
+    var saved = localStorage.getItem("jarvis_theme") || localStorage.getItem("theme");
+    if(saved === "dark"){
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else if(saved === "light"){
+      document.documentElement.setAttribute("data-theme", "light");
+    } else if(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches){
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+    if(window.matchMedia){
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(e){
+        if(!localStorage.getItem("jarvis_theme") && !localStorage.getItem("theme")){
+          document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+        }
+      });
+    }
+
+    // Anti-flash of Home tab on F5 / page reload when URL has hash (W3C standard CSS DOM injection)
+    var h = (location.hash || "").replace(/^#/, "").toLowerCase();
+    var tabMap = {
+      "dash": "viewDash", "dashboard": "viewDash",
+      "form": "viewForm",
+      "sched": "viewSchedule", "schedule": "viewSchedule",
+      "pim": "viewPim", "product": "viewPim",
+      "chat": "sectionChat", "ai": "sectionChat",
+      "history": "viewHistory", "activity": "viewHistory",
+      "settings": "viewSettings", "api": "viewSettings"
+    };
+    if(h && tabMap[h]){
+      var targetId = tabMap[h];
+      var styleEl = document.createElement("style");
+      styleEl.id = "anti-flash-style";
+      styleEl.textContent = '#viewHome { display: none !important; } .page { display: block !important; } #' + targetId + ' { display: block !important; }';
+      document.head.appendChild(styleEl);
+    }
+  })();
+</script>
+</head>
+<body class="view-home-active">
+
+<!-- DaouOffice-style Vertical Left Sidebar (LNB) -->
+<aside class="daou-sidebar" id="daouSidebar">
+  <!-- Vertical Nav Items -->
+  <div class="sidebar-nav">
+    <div class="sidebar-section-title" data-i18n="nav.main_section">메인 업무</div>
+    <nav class="tabs" role="tablist" aria-label="일반 화면 전환">
+      <button class="tab-btn active" id="tabBtnHome" role="tab" aria-selected="true" data-i18n-title="nav.home" title="홈">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span class="tab-label" data-i18n="nav.home">홈</span>
+      </button>
+      <button class="tab-btn" id="tabBtnDash" role="tab" aria-selected="false" data-i18n-title="nav.dash" title="대시보드">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="9"></rect>
+          <rect x="14" y="3" width="7" height="5"></rect>
+          <rect x="14" y="12" width="7" height="9"></rect>
+          <rect x="3" y="16" width="7" height="5"></rect>
+        </svg>
+        <span class="tab-label" data-i18n="nav.dash">대시보드</span>
+      </button>
+      <button class="tab-btn" id="tabBtnForm" role="tab" aria-selected="false" data-i18n-title="nav.jira" title="업무 등록">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+          <path d="M9 14l2 2 4-4"></path>
+        </svg>
+        <span class="tab-label" data-i18n="nav.jira">업무 등록</span>
+      </button>
+      <button class="tab-btn" id="tabBtnSchedule" role="tab" aria-selected="false" data-i18n-title="nav.schedule" title="사내 일정">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span class="tab-label" data-i18n="nav.schedule">일정</span>
+      </button>
+      <button class="tab-btn" id="tabBtnPim" role="tab" aria-selected="false" data-i18n-title="nav.pim" title="제품정보 (PIM)">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <span class="tab-label" data-i18n="nav.pim">제품정보</span>
+      </button>
+      <button class="tab-btn" id="tabBtnChat" role="tab" aria-selected="false" hidden data-i18n-title="nav.chat" title="AI 업무 비서">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span class="tab-label" data-i18n="nav.chat">업무 비서</span>
+      </button>
+    </nav>
+
+    <!-- Admin Section -->
+    <div class="sidebar-admin-wrap" id="navTabsAdmin" hidden>
+      <div class="sidebar-section-title" data-i18n="nav.admin_section">관리자 전용</div>
+      <nav class="tabs tabs-admin" role="tablist" aria-label="관리자 화면 전환">
+        <button class="tab-btn tab-btn-admin" id="tabBtnHistory" role="tab" aria-selected="false" hidden data-i18n-title="nav.history" title="업무 이력 로그">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span class="tab-label" data-i18n="nav.history">업무 이력</span>
+          <span class="admin-badge">Admin</span>
+        </button>
+        <button class="tab-btn tab-btn-admin" id="tabBtnSettings" role="tab" aria-selected="false" hidden data-i18n-title="nav.settings" title="AI 및 시스템 설정">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span class="tab-label" data-i18n="nav.settings">환경설정</span>
+          <span class="admin-badge">Admin</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Sidebar Footer (Hidden - superseded by Topbar Avatar Menu) -->
+  <div class="sidebar-footer" hidden style="display:none !important;">
+    <div class="auth-area">
+      <button type="button" class="btn-login" id="loginBtn" data-i18n="auth.login_start">로그인 / 시작</button>
+      <div class="user-chip" id="userChip" hidden>
+        <span class="avatar" id="userAvatar"></span>
+        <div class="user-chip-text">
+          <span class="user-chip-name" id="userChipName"></span>
+          <span class="user-chip-email" id="userChipEmail"></span>
+        </div>
+        <button type="button" class="logout-btn" id="logoutBtn" data-i18n-title="auth.logout" aria-label="로그아웃" title="로그아웃">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+      <span class="auth-hint" id="authHint">Atlassian 계정 연동은 준비 중</span>
+      <form class="id-form" id="idForm" hidden>
+        <label for="idNameInput">이름</label>
+        <input type="text" id="idNameInput" placeholder="예: 홍길동 대리" required>
+        <label for="idEmailInput">이메일 <span style="font-weight:400;color:var(--ink-faint);">(선택)</span></label>
+        <input type="text" id="idEmailInput" placeholder="예: user@example.com">
+        <label for="idOrgSelect">업무 카테고리 (소속 / 프로젝트)</label>
+        <select id="idOrgSelect" required></select>
+
+        <div id="idPasswordStage" hidden>
+          <label for="idPasswordInput" id="idPasswordLabel">비밀번호</label>
+          <input type="password" id="idPasswordInput" autocomplete="off">
+          <div id="idPasswordConfirmWrap" hidden>
+            <label for="idPasswordConfirmInput">비밀번호 확인</label>
+            <input type="password" id="idPasswordConfirmInput" autocomplete="off">
+          </div>
+          <p id="idPasswordHint" class="id-password-hint"></p>
+        </div>
+
+        <p class="id-form-error" id="idFormError"></p>
+
+        <div class="id-form-actions">
+          <button type="submit" class="confirm" id="idFormSubmitBtn">다음</button>
+          <button type="button" class="cancel" id="idFormCancel">취소</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</aside>
+
+<!-- Jira-style Topbar Header -->
+<header class="topbar-slim" id="topbarSlim">
+  <div class="topbar-slim-left">
+    <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn" data-i18n-title="nav.toggle_menu" title="메뉴 접기/펼치기" aria-label="메뉴 접기/펼치기">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <a href="#home" class="brand" id="brandLogo" title="홈으로 이동" aria-label="홈으로 이동">
+      <svg id="topbarDefaultSvg" width="28" height="28" viewBox="0 0 200 200" aria-hidden="true">
+        <defs>
+          <linearGradient id="mA" gradientUnits="userSpaceOnUse" x1="100" y1="30" x2="100" y2="152">
+            <stop offset="0" stop-color="#9ad4e8"/>
+            <stop offset="1" stop-color="#3a99c9"/>
+          </linearGradient>
+          <linearGradient id="mF" gradientUnits="userSpaceOnUse" x1="100" y1="38" x2="146" y2="144">
+            <stop offset="0" stop-color="#4e9fc8" stop-opacity="0.72"/>
+            <stop offset="1" stop-color="#a9d8ec" stop-opacity="0.42"/>
+          </linearGradient>
+          <linearGradient id="mB" gradientUnits="userSpaceOnUse" x1="75" y1="120" x2="125" y2="135">
+            <stop offset="0" stop-color="#5fb6da"/>
+            <stop offset="1" stop-color="#2d86b8"/>
+          </linearGradient>
+        </defs>
+        <path d="M100 38 L146 144" fill="none" stroke="url(#mF)" stroke-width="24" stroke-linecap="round"/>
+        <path d="M100 38 L54 144" fill="none" stroke="url(#mA)" stroke-width="24" stroke-linecap="round"/>
+        <rect x="75" y="120" width="50" height="15" rx="7.5" fill="#b6dcef" fill-opacity="1"/>
+        <rect x="75" y="120" width="30" height="15" rx="7.5" fill="url(#mB)"/>
+        <path d="M26 169 C58 153 110 143 170 141 C116 151 62 159 40 173 C34 177 24 175 26 169 Z" fill="#3a99c9"/>
+        <circle cx="171" cy="139" r="5.4" fill="#4aa6d0"/>
+      </svg>
+      <span class="brand-name" id="topbarBrandName">ARGOS<span class="brand-suffix">WORKS</span></span>
+    </a>
+    <div class="topbar-page-title" id="topbarPageTitle" hidden></div>
+  </div>
+  <div class="topbar-slim-right">
+    <!-- Topbar Notification Bell Button -->
+    <button type="button" class="topbar-notif-btn" id="topbarNotifBtn" aria-label="알림" data-i18n-title="nav.notifications" title="알림" aria-haspopup="true" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span class="topbar-notif-badge" id="topbarNotifBadge" hidden>0</span>
+    </button>
+
+    <!-- Topbar Avatar Profile Button -->
+    <button type="button" class="topbar-avatar-btn" id="topbarAvatarBtn" aria-label="계정 및 설정" data-i18n-title="auth.account_menu" title="계정 및 설정" aria-haspopup="true" aria-expanded="false">
+      <span class="topbar-avatar-inner" id="topbarAvatarInner">
+        <svg class="topbar-avatar-guest-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </span>
+    </button>
+
+    <!-- Topbar Notification Menu Dropdown -->
+    <div class="topbar-notif-menu" id="topbarNotifMenu" hidden>
+      <div class="notif-menu-header">
+        <div class="notif-menu-title-row">
+          <div class="notif-menu-title">
+            <span data-i18n="nav.notifications">알림</span>
+            <span class="notif-badge-pill" id="notifUnreadCountBadge" hidden>0</span>
+          </div>
+          <div class="notif-header-actions">
+            <button type="button" class="notif-sound-btn" id="notifSoundToggleBtn" title="알림음 토글 (켜짐)" aria-label="알림음 켜기/끄기">🔊</button>
+            <button type="button" class="notif-mark-all-btn" id="notifMarkAllReadBtn">모두 읽음</button>
+          </div>
+        </div>
+        <div class="notif-push-banner" id="notifPushBanner" hidden>
+          <div class="notif-push-banner-text">
+            <span>🔔</span> <strong>데스크톱 실시간 알림</strong>
+          </div>
+          <button type="button" class="notif-push-enable-btn" id="notifEnablePushBtn">허용</button>
+        </div>
+        <div class="notif-menu-tabs">
+          <button type="button" class="notif-tab active" data-filter="all">전체</button>
+          <button type="button" class="notif-tab" data-filter="unread">미확인</button>
+          <button type="button" class="notif-tab" data-filter="mention">배정/멘션</button>
+        </div>
+      </div>
+      <div class="notif-menu-list" id="notifMenuList">
+        <!-- Rendered by notifications.js -->
+      </div>
+      <div class="notif-menu-footer">
+        <span class="notif-footer-hint">최근 30일간의 중요 업무 알림이 표시됩니다.</span>
+        <button type="button" class="notif-test-push-btn" id="notifTestPushBtn" title="브라우저 푸시 알림 및 사운드 테스트">알림 테스트</button>
+      </div>
+    </div>
+
+    <!-- Google / Jira / Choivis Style Account & Settings Menu -->
+    <div class="topbar-account-menu" id="topbarAccountMenu" hidden>
+      <!-- Logged-in Profile Area -->
+      <div class="topbar-menu-profile" id="topbarMenuProfileLoggedIn" hidden>
+        <div class="topbar-menu-avatar" id="topbarMenuAvatar"></div>
+        <div class="topbar-menu-user-info">
+          <div class="topbar-menu-name-row">
+            <span class="topbar-menu-name" id="topbarMenuName"></span>
+            <span class="admin-badge" id="topbarMenuAdminBadge" hidden>Admin</span>
+          </div>
+          <div class="topbar-menu-email" id="topbarMenuEmail"></div>
+          <div class="topbar-menu-org" id="topbarMenuOrg"></div>
+        </div>
+      </div>
+
+      <!-- Guest Area (When logged out) -->
+      <div class="topbar-menu-guest" id="topbarMenuProfileGuest">
+        <div class="topbar-menu-guest-header">
+          <div class="topbar-menu-guest-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <div class="topbar-menu-guest-info">
+            <div class="topbar-menu-guest-title" data-i18n="auth.guest_title">로그인이 필요합니다</div>
+            <div class="topbar-menu-guest-desc" data-i18n="auth.guest_desc">ArgosWorks 서비스 이용을 위해 로그인하세요</div>
+          </div>
+        </div>
+        <button type="button" class="topbar-menu-login-btn" id="topbarMenuLoginBtn" data-i18n="auth.login_start">로그인 / 시작</button>
+      </div>
+
+      <div class="topbar-menu-divider"></div>
+
+      <!-- Settings Section (Language, Theme, and Profile Edit inside avatar menu) -->
+      <div class="topbar-menu-settings">
+        <!-- Edit Profile Row (When Logged in) -->
+        <div class="topbar-menu-item" id="topbarMenuEditProfileRow" hidden>
+          <div class="topbar-menu-item-left">
+            <span class="topbar-menu-item-label">정보 수정</span>
+          </div>
+          <button type="button" class="topbar-menu-btn" id="btnOpenEditProfile" title="내 정보 수정">
+            <span>수정</span>
+          </button>
+        </div>
+
+        <!-- Language Setting Row (Icon removed) -->
+        <div class="topbar-menu-item">
+          <div class="topbar-menu-item-left">
+            <span class="topbar-menu-item-label" data-i18n="nav.lang">언어</span>
+          </div>
+          <button type="button" class="lang-toggle-btn topbar-menu-btn" id="langToggleBtn" data-i18n-title="nav.lang_toggle" title="언어 변경 (KO / EN)" aria-label="언어 변경">
+            <span class="lang-code" id="langCode">KO</span>
+          </button>
+        </div>
+
+        <!-- Theme Setting Row (Icon removed) -->
+        <div class="topbar-menu-item">
+          <div class="topbar-menu-item-left">
+            <span class="topbar-menu-item-label" data-i18n="nav.theme">화면 모드</span>
+          </div>
+          <button type="button" class="theme-toggle-btn topbar-menu-btn" id="themeToggleBtn" data-i18n-title="nav.theme_toggle" title="다크 / 라이트 모드 전환" aria-label="테마 전환">
+            <span class="theme-text" id="themeText" data-i18n="nav.theme_dark">다크 모드</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Footer (Logout when logged in) -->
+      <div class="topbar-menu-footer" id="topbarMenuFooterLoggedIn" hidden>
+        <div class="topbar-menu-divider"></div>
+        <button type="button" class="topbar-menu-action-btn logout" id="topbarLogoutBtn" data-i18n="auth.logout">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          <span data-i18n="auth.logout">로그아웃</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Main Viewport (Right area next to DaouOffice vertical sidebar) -->
+<main class="main-viewport" id="mainViewport">
+
+<!-- ============ HOME VIEW (Google-Style Centered AI Search - 100% Full Bleed) ============ -->
+<section id="viewHome">
+  <canvas id="homeInteractiveBg" class="home-interactive-bg" aria-hidden="true"></canvas>
+  <div class="home-google-container">
+    <div class="home-google-header">
+      <div class="home-google-logo">
+        <span class="home-logo-text" id="homeLogoText">ARGOS WORKS</span>
+        <span class="home-logo-badge" id="homeLogoBadge">AI Search</span>
+      </div>
+      <p class="home-google-sub" id="homeGoogleSub">사내 업무 기록 · 인수인계 · 제품 정보 · 일정 통합 검색</p>
+
+    </div>
+
+    <form class="home-ask-form google-search-bar" id="homeAskForm">
+      <span class="search-bar-icon" aria-hidden="true">🔍</span>
+      <input type="text" id="homeAskInput" placeholder="사내 업무, 제품 모델명, 일정, 담당자 검색..." autocomplete="off">
+      <button type="button" id="homeAskClearBtn" class="home-search-clear" title="지우기" hidden aria-label="지우기">✕</button>
+      <button type="submit" class="home-search-btn" id="homeAskBtn">검색</button>
+    </form>
+
+    <!-- Google-style 4 Quick Navigation Buttons -->
+    <div class="home-quick-actions" id="homeQuickActions">
+      <button type="button" class="home-quick-btn" data-target="dash" title="대시보드로 이동">
+        <span class="quick-btn-icon">📊</span>
+        <span class="quick-btn-text">대시보드</span>
+      </button>
+      <button type="button" class="home-quick-btn" data-target="schedule" title="사내 일정 캘린더로 이동">
+        <span class="quick-btn-icon">📅</span>
+        <span class="quick-btn-text">일정</span>
+      </button>
+      <button type="button" class="home-quick-btn" data-target="pim" title="사내 제품정보(PIM)로 이동">
+        <span class="quick-btn-icon">📦</span>
+        <span class="quick-btn-text">제품</span>
+      </button>
+      <button type="button" class="home-quick-btn" data-target="chat" title="AI 업무 비서 챗봇으로 이동 (로그인 필요)">
+        <span class="quick-btn-icon">💬</span>
+        <span class="quick-btn-text">챗봇</span>
+      </button>
+    </div>
+
+    <div class="home-ask-result" id="homeAskResult" hidden>
+      <div class="home-thinking" id="homeAskThinking" hidden>
+        <div class="thinking-header">
+          <span class="thinking-icon-badge" id="thinkingIcon">🔍</span>
+          <div class="thinking-status-wrap">
+            <span class="thinking-status-text" id="thinkingStatusText">질문 의도 분석 및 사내 데이터 검색 중...</span>
+            <span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>
+          </div>
+        </div>
+        <div class="thinking-skeletons">
+          <div class="thinking-skeleton-line" style="width: 85%;"></div>
+          <div class="thinking-skeleton-line" style="width: 100%;"></div>
+          <div class="thinking-skeleton-line" style="width: 65%;"></div>
+        </div>
+      </div>
+      <div class="home-ask-answer" id="homeAskAnswer"></div>
+      <div class="home-ask-sources" id="homeAskSources"></div>
+    </div>
+    <div class="empty-state" id="homeAskEmpty" hidden style="margin-top:20px;">관련 자료를 찾지 못했습니다. 다른 키워드로 다시 검색해보세요.</div>
+  </div>
+
+  <!-- Bottom Branding Banner (Visible on idle screen, hidden when search results appear) -->
+  <footer class="home-brand-footer" id="homeBrandFooter">
+    <span class="home-brand-badge">🔒 사내망 전용</span>
+    <span class="home-brand-separator">·</span>
+    <span class="home-brand-title" id="homeBrandFooterTitle">ARGOS WORKS</span>
+    <span class="home-brand-separator">—</span>
+    <span class="home-brand-desc" id="homeBrandFooterDesc">업무 인수인계 및 AI 협업 기록 시스템</span>
+    <span class="home-brand-author" id="homeBrandFooterAuthor"></span>
+  </footer>
+
+</section>
+
+<div class="page">
+
+  <!-- ============ DASHBOARD VIEW ============ -->
+  <section id="viewDash" hidden>
+    <div class="dash-layout">
+      <div class="dash-main-content">
+        <div class="dept-overview">
+          <div class="dept-cards" id="deptCards"></div>
+
+          <!-- Choivis Filter Toolbar (Placed above member selection bar) -->
+          <div class="filter-row choivis-toolbar" id="filterRow">
+            <div class="chip-group" id="orgChips" style="display:none !important;" hidden></div>
+            <select class="filter-select" id="assigneeFilter" style="display:none !important;" hidden>
+              <option value="all" data-i18n="filter.all_assignees">전체 담당자</option>
+            </select>
+            <select class="filter-select" id="catFilter" hidden>
+              <option value="all" data-i18n="filter.all_categories">전체 카테고리</option>
+            </select>
+            <div class="filter-group-left">
+              <select class="choivis-select-cyan" id="dashViewMode" title="보기 방식: 트리 / 담당자별 / 플랫">
+                <option value="tree" selected data-i18n="filter.view_tree">트리 보기</option>
+                <option value="assignee" data-i18n="filter.view_assignee">담당자별 그룹</option>
+                <option value="flat" data-i18n="filter.view_flat">플랫 보기</option>
+              </select>
+              <select class="choivis-select" id="statusFilter" title="상태 필터">
+                <option value="all" data-i18n="filter.status_all">모든 상태</option>
+                <option value="진행" data-i18n="filter.status_inprog">진행</option>
+                <option value="검토" data-i18n="filter.status_review">검토</option>
+                <option value="예정" data-i18n="filter.status_todo">예정</option>
+                <option value="완료" data-i18n="filter.status_done">완료</option>
+              </select>
+              <div class="choivis-search-wrap">
+                <input type="text" id="searchInput" class="choivis-search-input" data-i18n-ph="filter.search_ph" placeholder="🔍 이슈 키, 요약 검색..." autocomplete="off">
+                <button type="button" id="searchClearBtn" class="search-clear-btn" title="검색어 지우기 (Esc)" aria-label="검색어 지우기" hidden>✕</button>
+              </div>
+            </div>
+            <div class="toolbar-divider" aria-hidden="true"></div>
+            <div class="filter-group-right">
+              <button type="button" id="btnToggleTree" class="choivis-btn-purple" data-i18n-title="filter.expand_all" data-i18n="filter.expand_all" title="하위 작업 모두 펼치기/접기">📂 모두 펼치기</button>
+              <button type="button" id="syncBtn" class="choivis-btn-sync" data-i18n-title="filter.sync_jira" data-i18n="filter.sync_jira" title="Jira 동기화">🔄 Jira 동기화</button>
+              <button type="button" id="btnExportExcel" class="choivis-btn-subtle" data-i18n-title="filter.export_excel" title="현재 업무 목록을 엑셀(.xlsx)로 다운로드">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>엑셀</span>
+              </button>
+              <button type="button" id="btnCreateIssue" class="choivis-btn-green" data-i18n-title="filter.create_task" data-i18n="filter.create_task" title="새 작업 등록">➕ 새 작업 등록</button>
+            </div>
+          </div>
+
+          <!-- Member selection bar (Assignee Panel) -->
+          <div class="assignee-panel" id="assigneePanel">
+            <!-- Row for specific department view: horizontal avatar pills + toggle button -->
+            <div class="assignee-panel-row" id="assigneePanelRow" style="display:none;">
+              <div class="assignee-bar drag-scroll-bar" id="assigneeBar"></div>
+              <div class="assignee-panel-actions">
+                <button type="button" class="btn-toggle-view" id="btnToggleAssigneeViewDept" data-i18n-title="filter.view_table" title="상세 표 보기/접기">
+                  <span class="btn-toggle-icon">▦</span>
+                  <span class="btn-toggle-text" data-i18n="filter.view_table">상세 표</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Table header for "All" department view: title + count badge + toggle button -->
+            <div class="assignee-table-header" id="assigneeTableHeader">
+              <div class="assignee-table-title-wrap">
+                <span class="assignee-table-title" id="assigneePanelLabel">담당자별 현황</span>
+                <span class="assignee-count-badge" id="assigneeCountBadge">0명</span>
+              </div>
+              <button type="button" class="btn-toggle-view active" id="btnToggleAssigneeView" title="상세 표 접기/펼치기">
+                <span class="btn-toggle-icon">▲</span>
+                <span class="btn-toggle-text">표 접기</span>
+              </button>
+            </div>
+
+            <!-- Detailed table (open by default) -->
+            <div class="table-scroll" id="assigneeTableWrap">
+              <table class="assignee-table">
+                <thead><tr><th>담당자</th><th>소속</th><th title="전체 담당 업무 (완료 포함)" data-i18n="filter.col_total_assigned">담당 건수</th><th>카테고리</th><th>진행률</th></tr></thead>
+                <tbody id="assigneeTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="records-header" id="recordsHeader" style="display:none;">
+          <div>
+            <p class="records-eyebrow" id="recordsLabel">최근 기록</p>
+            <p class="records-caption" id="recordsCaption"></p>
+          </div>
+          <div class="records-header-actions">
+            <span class="sync-caption" id="syncCaption"></span>
+            <button type="button" class="btn-secondary" id="viewToggleBtn" hidden>전체 목록 보기 →</button>
+          </div>
+        </div>
+        <div class="records-wrap capped" id="recordsWrap">
+          <div class="records" id="recordList"></div>
+        </div>
+        <div class="empty-state" id="emptyState" hidden>조건에 맞는 기록이 없습니다.</div>
+      </div>
+
+      <!-- Canvas Resizer (Choivis Style Drag-to-Resize) -->
+      <div id="canvasResizer" class="canvas-resizer" hidden title="드래그하여 크기 조절 / 더블클릭시 기본값"></div>
+    </div>
+  </section>
+
+  <!-- ============ SUBMIT FORM VIEW ============ -->
+  <section id="viewForm" hidden>
+    <form id="submitForm" autocomplete="off">
+      <div class="form-grid">
+        <!-- Cột Trái: Nội dung công việc & Tệp đính kèm -->
+        <div class="form-col-main">
+          <div class="field">
+            <label for="titleInput">제목 <span class="optional">(선택, 간결한 업무명)</span></label>
+            <input type="text" id="titleInput" placeholder="업무 요약 및 제목을 간결하게 입력하세요 (비워두면 메모에서 자동 추출)" autocomplete="off">
+          </div>
+
+          <div class="field">
+            <label for="memoInput">메모 / 상세 내용 <span class="optional">(선택, 업무 상세 내용)</span></label>
+            <textarea id="memoInput" placeholder="설명, 인수인계 대상자, 후속조치 필요 여부 등을 자유롭게 적어주세요." autocomplete="off"></textarea>
+          </div>
+
+          <div class="field">
+            <label>첨부 파일 <span class="optional">(선택)</span></label>
+            <div class="dropzone" id="dropzone">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 16V4M12 4l-4 4M12 4l4 4"></path><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"></path></svg>
+              <div class="dz-title">파일을 끌어다 놓거나 클릭해 선택</div>
+              <div class="dz-sub">문서, 스프레드시트, 이미지, 압축파일 등</div>
+            </div>
+            <input type="file" id="fileInput" multiple>
+            <div id="fileList"></div>
+          </div>
+        </div>
+
+        <!-- Cột Phải: Phân loại & Kế hoạch thực hiện -->
+        <div class="form-col-side">
+          <div class="field">
+            <label for="orgSelect">소속 / 프로젝트</label>
+            <select id="orgSelect" required></select>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="catSelect">카테고리</label>
+              <select id="catSelect">
+                <option value="">기타 / 자동 분류</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="parentKeySelect">상위 작업</label>
+              <select id="parentKeySelect">
+                <option value="">선택 안 함 (독립 상위 작업)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="projectInput">관련 프로젝트 / 고객사 <span class="optional">(선택)</span></label>
+            <input type="text" id="projectInput" list="projectOptions" placeholder="예: 프로젝트명 입력" autocomplete="off">
+            <datalist id="projectOptions"></datalist>
+          </div>
+
+          <div class="field">
+            <label for="participantsSelect">참여자 / 공동 작업자 <span class="optional">(선택, 복수 선택 가능)</span></label>
+            <select id="participantsSelect" multiple placeholder="함께 진행할 팀원을 선택하세요..."></select>
+          </div>
+
+          <div class="field-row">
+            <div class="field" id="startDateField">
+              <label for="startDateInput">시작일 <span class="optional">(선택)</span></label>
+              <div class="custom-date-picker-wrap">
+                <input type="date" id="startDateInput" class="custom-date-native" lang="ko">
+                <div class="custom-date-overlay" id="startDateDisplay">
+                  <span class="custom-date-text placeholder">연도-월-일 선택 (YYYY-MM-DD)</span>
+                  <span class="custom-date-cal-icon">📅</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="field" id="dueDateField">
+              <label for="dueDateInput">마감일 / 완료 목표일 <span class="optional">(선택)</span></label>
+              <div class="custom-date-picker-wrap">
+                <input type="date" id="dueDateInput" class="custom-date-native" lang="ko">
+                <div class="custom-date-overlay" id="dueDateDisplay">
+                  <span class="custom-date-text placeholder">연도-월-일 선택 (YYYY-MM-DD)</span>
+                  <span class="custom-date-cal-icon">📅</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field checkbox-field" id="followupCheckWrap" hidden>
+            <input type="checkbox" id="followupCheck">
+            <label for="followupCheck" style="margin:0;">Jira Cloud 티켓 동시 발행 (선택 사항)</label>
+          </div>
+
+          <div class="form-error" id="formError">제목, 파일 또는 메모 중 하나는 입력해주세요.</div>
+
+          <div class="submit-row">
+            <button type="submit" class="btn-primary" id="submitBtn">제출</button>
+            <div class="processing-status" id="processingStatus"><span class="dot"></span> 처리 중입니다…</div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <!-- ============ SCHEDULE (CALENDAR) VIEW ============ -->
+  <section id="viewSchedule" hidden>
+    <div class="schedule-layout-modern">
+      <!-- ============ SCHEDULE LEFT SIDEBAR (팀원 목록 & 필터 - 접기/펼치기 가능) ============ -->
+      <aside class="schedule-members-sidebar" id="schedMembersSidebar">
+        <div class="sched-members-header">
+          <span class="sched-members-title">👥 팀원 일정</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button type="button" class="sched-members-toggle-all" id="schedMembersToggleAll">전체 해제</button>
+            <button type="button" class="sched-members-close-btn" id="schedMembersCloseBtn" title="닫기">✕</button>
+          </div>
+        </div>
+        <div class="sched-members-search-wrap">
+          <input type="text" id="schedMembersSearch" placeholder="이름 또는 부서 검색…" autocomplete="off">
+        </div>
+        <div class="sched-members-list" id="schedMembersList">
+          <div class="empty-state" style="padding:16px 4px;font-size:12px;">팀원 목록을 불러오는 중…</div>
+        </div>
+      </aside>
+
+      <!-- ============ SCHEDULE MAIN AREA (넓은 캘린더 워크스페이스) ============ -->
+      <main class="schedule-main-area">
+        <!-- Modern Calendar Toolbar -->
+        <div class="schedule-toolbar-modern">
+          <!-- Row 1 (or Left on Wide): Navigation & Date -->
+          <div class="sched-tb-row sched-tb-row-nav">
+            <button type="button" class="btn-toggle-members-sidebar" id="btnToggleMembersSidebar" title="팀원 필터 접기/펼치기">
+              <span class="icon-toggle-side">☰</span>
+              <span class="text-toggle-side">팀원</span>
+            </button>
+            <div class="schedule-nav-group">
+              <button type="button" class="sched-nav-btn" id="schedPrevBtn" title="이전">‹</button>
+              <span class="schedule-month-title" id="schedMonthLabel"></span>
+              <button type="button" class="sched-nav-btn" id="schedNextBtn" title="다음">›</button>
+            </div>
+            <button type="button" class="sched-today-pill" id="schedTodayBtn">오늘</button>
+          </div>
+
+          <!-- Row 2 (or Right on Wide): Views & Actions -->
+          <div class="sched-tb-row sched-tb-row-actions">
+            <div class="schedule-view-switcher" role="tablist">
+              <button type="button" class="sched-view-tab active" data-view="month" id="schedViewMonthBtn">월</button>
+              <button type="button" class="sched-view-tab" data-view="week" id="schedViewWeekBtn">주</button>
+              <button type="button" class="sched-view-tab" data-view="agenda" id="schedViewAgendaBtn">목록</button>
+            </div>
+
+            <div class="sched-tb-actions-group">
+              <label class="schedule-toggle-pill" title="주말(토/일) 표시 여부">
+                <input type="checkbox" id="schedShowWeekend">
+                <span class="sched-weekend-label">주말</span>
+              </label>
+
+              <button type="button" class="btn-toggle-task-panel active" id="btnToggleTaskDrawer" title="미배정 업무 보관함 열기/접기">
+                <span class="btn-ttp-icon">📋</span>
+                <span class="btn-ttp-label">보관함</span>
+                <span class="btn-ttp-count">(<span id="schedTaskCount">0</span>)</span>
+              </button>
+
+              <button type="button" class="btn-sched-create-primary" id="btnSchedOpenCreateModal" title="새 일정 추가">
+                <span class="btn-sched-create-icon">＋</span>
+                <span class="btn-sched-create-label">일정 추가</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. Month View (월간 달력) -->
+        <div class="sched-view-pane active" id="schedMonthPane">
+          <div class="cal-month-card" id="schedMonthCard">
+            <table class="cal-month-table" id="schedMonthTable">
+              <thead>
+                <tr class="cal-weekday-row" id="schedWeekdays">
+                  <th class="sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class="sat">토</th>
+                </tr>
+              </thead>
+              <tbody id="schedGrid"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. Week View (주간 달력) -->
+        <div class="sched-view-pane" id="schedWeekPane" hidden>
+          <div class="cal-week-card" id="schedWeekCard">
+            <table class="cal-week-table" id="schedWeekTable">
+              <thead>
+                <tr class="cal-week-header-row" id="schedWeekHeaderRow"></tr>
+              </thead>
+              <tbody id="schedWeekGrid"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. Agenda View (일정 목록 / 타임라인) -->
+        <div class="sched-view-pane" id="schedAgendaPane" hidden>
+          <div class="cal-agenda-container" id="schedAgendaList"></div>
+        </div>
+
+        <!-- Bottom Controls: Legend Only -->
+        <div class="schedule-bottom-bar">
+          <div class="schedule-legend" id="schedLegend"></div>
+        </div>
+      </main>
+
+      <!-- ============ RIGHT SIDEBAR: DRAGGABLE TASK PANEL (우측 업무 카드 보관함) ============ -->
+      <aside class="schedule-task-panel" id="schedTaskDrawer">
+        <div class="std-panel-header">
+          <div class="std-title-wrap">
+            <span class="std-icon">📋</span>
+            <span class="std-title">업무 보관함</span>
+            <span class="std-count-badge" id="schedTaskBadgeCount">0건</span>
+          </div>
+          <button type="button" class="std-close-btn" id="btnSchedTaskClose" title="보관함 접기">✕</button>
+        </div>
+        <div class="std-search-wrap">
+          <input type="text" id="schedTaskSearch" placeholder="카드 코드 또는 제목 검색…" autocomplete="off">
+        </div>
+        <div class="std-hint-banner">
+          💡 카드를 마우스로 끌거나, [배정] 버튼으로 즉시 원하는 날짜에 배치하세요!
+        </div>
+        <div class="schedule-task-cards-list" id="schedTaskCardsList">
+          <div class="empty-state" style="padding:14px;font-size:12px;">불러오는 중…</div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ============ QUICK EVENT MODAL (일정 추가 / 편집 팝업 모달) ============ -->
+    <div class="sched-modal-backdrop" id="schedEventModalBackdrop" hidden>
+      <div class="sched-modal-card" id="schedEventModalCard" role="dialog" aria-modal="true" aria-labelledby="schedModalTitle">
+        <div class="sched-modal-header">
+          <div class="sched-modal-title-wrap">
+            <span class="sched-modal-icon">📅</span>
+            <h3 class="sched-modal-title" id="schedModalTitle">새 일정 추가</h3>
+          </div>
+          <button type="button" class="sched-modal-close" id="schedModalCloseBtn" title="닫기 (Esc)">✕</button>
+        </div>
+
+        <div class="empty-state" id="schedLoginNotice" style="padding:20px 10px;font-size:13px;" hidden>
+          먼저 우측 상단에서 이름/소속을 입력하고 시작해주세요. 일정은 본인 것만 등록·수정할 수 있습니다.
+        </div>
+
+        <form id="schedForm">
+          <input type="hidden" id="schedEventId">
+          <div class="sched-modal-body">
+            <!-- Chọn nhanh thẻ Local liên kết -->
+            <div class="field" id="schedCardSelectWrap">
+              <label for="schedCardSelect">연결할 업무 카드 <span class="optional">(선택 - 선택 시 자동 입력)</span></label>
+              <select id="schedCardSelect">
+                <option value="">-- 직접 입력 (일반 일정 / 휴가 / 출장 / 회의) --</option>
+              </select>
+            </div>
+
+            <div class="sched-date-row">
+              <div class="field">
+                <label for="schedDateStart">시작일</label>
+                <input type="date" id="schedDateStart" required>
+              </div>
+              <div class="field">
+                <label for="schedDateEnd">종료일 <span class="optional">(선택)</span></label>
+                <input type="date" id="schedDateEnd" title="종료일 (선택, 여러 날짜 일정일 때)">
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="schedType">유형</label>
+              <select id="schedType">
+                <option value="업무">업무</option>
+                <option value="연차">연차</option>
+                <option value="반차">반차</option>
+                <option value="병가">병가</option>
+                <option value="출장">출장</option>
+                <option value="재택">재택</option>
+                <option value="회의">회의</option>
+                <option value="기타">기타</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="schedTitle">제목</label>
+              <input type="text" id="schedTitle" placeholder="예: 연차, 학회 출장, 주간 회의 등" required autocomplete="off">
+            </div>
+
+            <div class="field">
+              <div class="sched-participants-header">
+                <label>참석자 / 동반 인원 <span class="optional">(선택)</span></label>
+                <button type="button" id="btnToggleAddParticipant" class="btn-add-participant-trigger" title="참석자 추가">＋ 참석자 추가</button>
+              </div>
+              <!-- Selected participants chip container -->
+              <div id="schedSelectedParticipants" class="sched-selected-participants-wrap"></div>
+              <!-- Dropdown picker for selecting members -->
+              <div id="schedParticipantPicker" class="sched-participant-picker" hidden>
+                <div class="picker-search-wrap">
+                  <input type="text" id="schedParticipantSearch" placeholder="이름 또는 부서 검색..." autocomplete="off">
+                </div>
+                <div id="schedParticipantOptions" class="picker-options-list"></div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="schedMemo">메모 <span class="optional">(선택)</span></label>
+              <textarea id="schedMemo" placeholder="자유롭게 적어주세요" autocomplete="off" rows="3"></textarea>
+            </div>
+
+            <p class="form-error show" id="schedFormError" style="min-height:16px; margin:4px 0 0;"></p>
+          </div>
+
+          <div class="sched-modal-footer">
+            <button type="button" class="btn-sched-delete" id="schedDeleteBtn" hidden>🗑️ 삭제</button>
+            <div id="schedApprovalActions" style="display:none; gap:6px; align-items:center;">
+              <button type="button" id="btnSchedApprove" style="background:#16a34a;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">✓ 승인</button>
+              <button type="button" id="btnSchedReject" style="background:#dc2626;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;">✕ 반려</button>
+            </div>
+            <div style="flex:1;"></div>
+            <button type="button" class="btn-sched-cancel" id="schedCancelEditBtn">취소</button>
+            <button type="submit" class="btn-sched-save" id="schedSaveBtn">추가</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============ DAY ALL EVENTS MODAL (일정 전체 보기 팝업 모달) ============ -->
+    <div class="sched-modal-backdrop" id="schedDayEventsModalBackdrop" hidden>
+      <div class="sched-modal-card" style="max-width: 520px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="sched-modal-header">
+          <div class="sched-modal-title-wrap">
+            <span class="sched-modal-icon">📅</span>
+            <h3 class="sched-modal-title" id="schedDayEventsModalTitle">전체 일정</h3>
+            <span class="std-count-badge" id="schedDayEventsModalCount" style="margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 12px; background: var(--bg-hover); color: var(--ink-soft); font-weight: 700;">0건</span>
+          </div>
+          <button type="button" class="sched-modal-close" id="btnSchedDayEventsClose" title="닫기 (Esc)">✕</button>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 8px;" id="schedDayEventsModalList"></div>
+      </div>
+    </div>
+
+    <!-- ============ QUICK TASK SCHEDULE MODAL (업무 카드 날짜 직접 배정 팝업) ============ -->
+    <div class="sched-modal-backdrop" id="schedTaskAssignModalBackdrop" hidden>
+      <div class="sched-modal-card" style="max-width: 400px;">
+        <div class="sched-modal-header">
+          <div class="sched-modal-title-wrap">
+            <span class="sched-modal-icon">📅</span>
+            <h3 class="sched-modal-title">달력 일정 배정</h3>
+          </div>
+          <button type="button" class="sched-modal-close" id="btnSchedTaskAssignClose" title="닫기 (Esc)">✕</button>
+        </div>
+        <form id="schedTaskAssignForm">
+          <input type="hidden" id="schedTaskAssignId">
+          <div class="sched-modal-body" style="padding: 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); line-height: 1.4;" id="schedTaskAssignTitle"></div>
+            <div style="display: flex; gap: 10px;">
+              <div class="field" style="margin: 0; flex: 1;">
+                <label for="schedTaskAssignStartDate" style="font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; display: block;">시작일</label>
+                <input type="date" id="schedTaskAssignStartDate" required style="width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 13px; font-weight: 600;">
+              </div>
+              <div class="field" style="margin: 0; flex: 1;">
+                <label for="schedTaskAssignEndDate" style="font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; display: block;">종료일</label>
+                <input type="date" id="schedTaskAssignEndDate" required style="width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-size: 13px; font-weight: 600;">
+              </div>
+            </div>
+            <p style="font-size: 11.5px; color: var(--ink-faint); margin: 0; line-height: 1.35;">
+              시작일과 종료일을 지정하면 달력에 기간 일정(Span)으로 등록됩니다. (하루짜리 일정은 시작일/종료일을 동일하게 선택)
+            </p>
+          </div>
+          <div class="sched-modal-footer" style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
+            <button type="button" class="btn-sched-cancel" id="btnSchedTaskAssignCancel">취소</button>
+            <button type="submit" class="btn-sched-save">배정하기</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Floating Drop-to-Unassign Zone (Dấu X tròn ở giữa, blur mờ sang 2 bên, 2 đường trên dưới song song) -->
+    <div id="schedDropUnassignZone" class="sched-drop-unassign-zone" hidden>
+      <div class="sched-unassign-inner">
+        <div class="sched-unassign-circle-x" aria-hidden="true">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </div>
+        <span class="sched-unassign-title">여기에 놓으면 달력 일정 해제</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PRODUCT INFO VIEW (제품정보) ============ -->
+  <section id="viewPim" hidden>
+    <!-- Mode Switcher: Catalog vs Internal DB -->
+    <div class="pim-mode-bar" hidden>
+      <div class="pim-mode-tabs">
+        <button type="button" class="pim-mode-tab" id="pimModeWebBtn">🌐 공식 제품</button>
+        <button type="button" class="pim-mode-tab active" id="pimModeInternalBtn">📁 사내 관리 제품</button>
+      </div>
+    </div>
+
+    <!-- 1. Catalog View (External Scraper View - Disabled by default) -->
+    <div id="pimWebView" class="pim-web-view" hidden>
+      <div class="pim-web-toolbar">
+        <div class="pim-cat-chips" id="pimWebCatChips">
+          <button type="button" class="pim-cat-chip active" data-cate="all">전체</button>
+        </div>
+        <div class="pim-web-search-row">
+          <div class="search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="pimWebSearchInput" placeholder="모델명, 제품 설명, 카테고리 검색...">
+          </div>
+          <button type="button" class="btn-secondary" id="pimWebRefreshBtn" title="새로고침">⟳ 새로고침</button>
+        </div>
+      </div>
+
+      <div class="pim-web-status-row">
+        <span class="pim-web-counter" id="pimWebCounter">불러오는 중...</span>
+      </div>
+
+      <div class="pim-web-grid" id="pimWebGrid"></div>
+      <div class="empty-state" id="pimWebEmpty" hidden>검색 조건에 맞는 제품이 없습니다.</div>
+    </div>
+
+    <!-- 2. INTERNAL DB VIEW (사내 관리 제품) -->
+    <div id="pimInternalView" class="pim-internal-view">
+      <div class="pim-toolbar">
+        <input type="text" id="pimSearchInput" placeholder="사내 제품 검색 (모델명, 제품명, 식별명)" autocomplete="off">
+        <button type="button" class="btn-primary" id="pimNewBtn">＋ 신규 제품 등록</button>
+      </div>
+      <p class="records-eyebrow" id="pimListLabel">제품 목록</p>
+      <div class="pim-web-grid" id="pimList"></div>
+      <div class="empty-state" id="pimEmpty" style="padding:40px 10px;" hidden>등록된 제품이 없습니다.</div>
+    </div>
+
+    <!-- Product Form Modal (신규 제품 등록 및 수정 팝업) -->
+    <div class="pim-modal-backdrop" id="pimFormModal" hidden>
+      <div class="pim-modal-card pim-form-modal-card">
+        <div class="pim-modal-header">
+          <div class="pim-modal-title-wrap">
+            <h2 class="pim-modal-model" id="pimFormTitle">신규 제품 등록</h2>
+          </div>
+          <button type="button" class="pim-modal-close" id="pimFormCloseBtn" aria-label="닫기">✕</button>
+        </div>
+        <form id="pimForm" class="pim-form-modal-form">
+          <div class="pim-modal-body pim-form-modal-body" style="display: flex; flex-direction: column; gap: 18px;">
+            <input type="hidden" id="pimId">
+            <input type="hidden" id="pimRevision" value="0">
+
+            <!-- SECTION 1: 기본 식별 정보 (Core Identification) -->
+            <div class="pim-form-section" style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 14px 16px;">
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>📌</span> 1. 기본 식별 정보
+              </div>
+              <div class="field-row" style="margin-bottom: 12px;">
+                <div class="field" style="margin: 0;">
+                  <label for="pimModelInput" style="font-weight: 600;">제품 코드 / 모델명 <span class="req" style="color:#ef4444;">*</span></label>
+                  <input type="text" id="pimModelInput" placeholder="예: CAM-5000 / SW-AI-V1" required>
+                </div>
+                <div class="field" style="margin: 0;">
+                  <label for="pimDisplayNameInput" style="font-weight: 600;">제품명 <span class="req" style="color:#ef4444;">*</span></label>
+                  <input type="text" id="pimDisplayNameInput" placeholder="예: 5MP AI Dome Camera" required>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field" style="margin: 0;">
+                  <label for="pimCategorySelect" style="font-weight: 600;">제품 카테고리</label>
+                  <select id="pimCategorySelect"></select>
+                </div>
+                <div class="field" style="margin: 0;">
+                  <label for="pimFamilyInput">브랜드 / 제품군 <span class="optional">(선택)</span></label>
+                  <input type="text" id="pimFamilyInput" placeholder="예: ARGOS / Vision Series">
+                </div>
+              </div>
+
+              <!-- 제품 대표 이미지 -->
+              <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border-color, #e2e8f0);">
+                <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px;">
+                  🖼️ 제품 대표 이미지 <span class="optional">(선택)</span>
+                </label>
+                <div style="display: flex; gap: 14px; align-items: center;">
+                  <div id="pimImagePreviewBox" style="width: 72px; height: 72px; border-radius: 8px; border: 1px dashed var(--border-color, #cbd5e1); background: var(--card-bg, #fff); display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; flex-shrink: 0;">
+                    <img id="pimImagePreview" src="" alt="미리보기" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                    <span id="pimImagePlaceholder" style="font-size: 24px; color: var(--ink-faint, #94a3b8);">📷</span>
+                  </div>
+                  <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                    <input type="file" id="pimImageInput" accept="image/*" style="display: none;">
+                    <div style="display: flex; gap: 8px;">
+                      <button type="button" class="btn-secondary" id="pimSelectImageBtn" style="padding: 5px 12px; font-size: 12px;">사진 선택 / 변경</button>
+                      <button type="button" class="btn-secondary" id="pimRemoveImageBtn" style="padding: 5px 10px; font-size: 12px; display: none; color: #ef4444;">사진 제거</button>
+                    </div>
+                    <span style="font-size: 11px; color: var(--ink-faint, #64748b);">JPG, PNG, WebP 지원 · 제품 카드와 상세보기에 메인 사진으로 표시됩니다.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 2: 영업 및 상태 -->
+            <div class="pim-form-section" style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 14px 16px;">
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>💼</span> 2. 영업 및 상태
+              </div>
+              <div class="field-row" style="gap: 10px;">
+                <div class="field" style="margin: 0; flex: 0 0 120px; max-width: 130px;">
+                  <label for="pimLifecycleSelect">판매 상태</label>
+                  <select id="pimLifecycleSelect" style="padding: 8px 8px; font-size: 13px;">
+                    <option value="판매 중">판매 중</option>
+                    <option value="단종 예정">단종 예정</option>
+                    <option value="단종">단종</option>
+                  </select>
+                </div>
+                <div class="field" style="margin: 0; flex: 1; min-width: 0;">
+                  <label for="pimPriceInput">기준 가격 <span class="optional">(선택)</span></label>
+                  <div style="display: flex; gap: 6px; align-items: center; width: 100%;">
+                    <input type="number" id="pimPriceInput" min="0" step="1" placeholder="0" style="flex: 1; min-width: 0; width: 0; box-sizing: border-box;">
+                    <select id="pimCurrencySelect" style="min-width: 74px; width: auto; max-width: 95px; flex-shrink: 0; padding: 8px 6px; font-size: 13px; box-sizing: border-box;" title="통화 단위">
+                      <option value="KRW">KRW</option>
+                      <option value="USD">USD</option>
+                      <option value="OTHER">직접 입력...</option>
+                    </select>
+                  </div>
+                  <div id="pimCurrencyCustomWrap" style="display: none; margin-top: 6px; width: 100%;">
+                    <input type="text" id="pimCurrencyCustomInput" placeholder="통화 코드 (예: VND, EUR)" maxlength="10" style="width: 100%; box-sizing: border-box; text-transform: uppercase; font-size: 12px; padding: 6px 10px;" autocomplete="off">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 3: 설명 및 소개 -->
+            <div class="pim-form-section" style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 14px 16px;">
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                <span>📝</span> 3. 설명 및 소개
+              </div>
+              <div class="field" style="margin-bottom: 12px;">
+                <label for="pimSummaryInput">핵심 요약 <span class="optional">(선택, 1-2줄 요약)</span></label>
+                <textarea id="pimSummaryInput" placeholder="고객 및 사내 직원이 쉽게 이해할 수 있는 제품 한 줄 요약" style="min-height: 50px;"></textarea>
+              </div>
+              <div class="field" style="margin: 0;">
+                <label for="pimMemoInput">상세 메모 / 내부 참고사항 <span class="optional">(선택)</span></label>
+                <textarea id="pimMemoInput" placeholder="담당자만 보는 기술 배경, 출시 히스토리, 참고사항" style="min-height: 50px;"></textarea>
+              </div>
+            </div>
+
+            <!-- SECTION 4: 상세 기술 사양 -->
+            <div class="pim-form-section" style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 14px 16px;">
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span>⚙️</span> 4. 상세 기술 사양
+                </div>
+                <button type="button" class="btn-secondary" id="pimAddCustomSpecBtn" style="padding: 3px 8px; font-size: 11px; font-weight: 600;">＋ 규격 항목 추가</button>
+              </div>
+              <p style="margin: 0 0 10px 0; font-size: 11px; color: var(--ink-faint, #64748b);">카테고리별 표준 사양을 입력하거나, 상단의 [+ 규격 항목 추가] 버튼으로 자유롭게 항목을 추가할 수 있습니다.</p>
+              <div id="pimSpecFields"></div>
+              <div id="pimCustomSpecsList" style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;"></div>
+            </div>
+
+            <!-- SECTION 5: 첨부파일 및 문서 -->
+            <div class="pim-form-section" style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 14px 16px;">
+              <div style="font-size: 13.5px; font-weight: 700; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                <span>📎</span> 5. 관련 첨부파일 및 문서
+              </div>
+              <div class="field" style="margin: 0;">
+                <label for="pimAttachInput" style="font-size: 12px; color: var(--ink-faint, #64748b); margin-bottom: 6px; display: block;">카탈로그, 제품 설명서(PDF), 매뉴얼, 공인 시험성적서, 도면, ZIP 파일 등</label>
+                <input type="file" id="pimAttachInput" multiple style="margin-top: 4px;">
+                <div class="pim-attach-list" id="pimAttachList" style="margin-top: 8px;"></div>
+              </div>
+            </div>
+
+            <!-- OPTIONAL: 조달 등록 전용 필드 (G2B Procurement - Collapsible Details) -->
+            <details style="background: var(--bg-hover, rgba(0,0,0,0.01)); border: 1px dashed var(--border-color, #cbd5e1); border-radius: 8px; padding: 10px 14px; font-size: 12px;">
+              <summary style="cursor: pointer; font-weight: 600; color: var(--ink-faint, #64748b);">
+                🏛️ 공공 조달 등록 정보 (G2B 조달청 등록 제품인 경우에만 클릭하여 입력)
+              </summary>
+              <div style="margin-top: 12px;">
+                <div class="checkbox-field" style="margin-bottom: 12px;">
+                  <input type="checkbox" id="pimProcureCheck">
+                  <label for="pimProcureCheck" style="margin: 0; font-weight: 600;">조달 등록 제품으로 관리</label>
+                </div>
+                <div id="pimProcureFields" hidden>
+                  <div class="field" style="margin-bottom: 10px;">
+                    <label for="pimRegNameInput">조달 등록 식별명</label>
+                    <input type="text" id="pimRegNameInput" placeholder="예: VSM-C2008-09">
+                  </div>
+                  <div class="field-row" style="margin-bottom: 10px;">
+                    <div class="field" style="margin: 0;">
+                      <label for="pimIdNoInput">물품식별번호 (8자리)</label>
+                      <input type="text" id="pimIdNoInput" placeholder="예: 24122535" maxlength="8">
+                    </div>
+                    <div class="field" style="margin: 0;">
+                      <label for="pimConfigInput">공급 구성</label>
+                      <input type="text" id="pimConfigInput" placeholder="예: 본체 + 케이블">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <p class="form-error" id="pimFormError"></p>
+          </div>
+          <div class="pim-modal-footer">
+            <button type="button" class="btn-secondary" id="pimFormDismissBtn">취소</button>
+            <button type="submit" class="btn-primary" id="pimSaveBtn">등록</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- VIEW: Work History & Daily Activity Explorer (업무 이력 - Admin) -->
+  <section class="page" id="viewHistory" hidden>
+    <div class="history-container">
+      <div class="history-header">
+        <div class="history-title-row">
+          <div class="history-subtitle" id="historySubtitleCounter"></div>
+
+          <div class="history-toolbar">
+            <!-- Date Navigator -->
+            <div class="history-date-group">
+              <button type="button" id="btnHistoryPrevDate" class="history-date-btn history-date-btn-prev" title="이전 날짜">&lt;</button>
+              <input type="date" id="historyDateFilter" class="history-date-input" title="조회할 날짜 선택">
+              <button type="button" id="btnHistoryNextDate" class="history-date-btn history-date-btn-next" title="다음 날짜">&gt;</button>
+            </div>
+            <button type="button" id="btnHistoryToday" class="history-btn-today" title="오늘 날짜로 이동">오늘</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="historyContent" class="history-content">
+        <!-- Rendered dynamically by history.js -->
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="viewSettings" hidden>
+    <div class="settings-container">
+      <!-- Settings Sub-Tabs Navigation Bar -->
+      <div class="settings-subtabs-wrap" id="settingsSubtabsWrap">
+        <button type="button" class="subtabs-scroll-btn prev" id="btnSettingsSubtabsPrev" aria-label="이전 탭 보기" title="이전 탭">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+
+        <nav class="settings-subtabs" id="settingsSubtabsNav" role="tablist" aria-label="설정 카테고리">
+          <button type="button" class="settings-subtab-btn active" data-settings-tab="integrations" role="tab" aria-selected="true">
+            <span class="subtab-icon">🔌</span>
+            <span class="subtab-text" data-i18n="settings.tab_integrations">API 및 외부 연동</span>
+          </button>
+          <button type="button" class="settings-subtab-btn" data-settings-tab="categories" role="tab" aria-selected="false">
+            <span class="subtab-icon">📁</span>
+            <span class="subtab-text" data-i18n="settings.tab_categories">업무 카테고리 / 프로젝트</span>
+          </button>
+          <button type="button" class="settings-subtab-btn" data-settings-tab="product_categories" role="tab" aria-selected="false">
+            <span class="subtab-icon">📦</span>
+            <span class="subtab-text">제품 규격 템플릿</span>
+          </button>
+          <button type="button" class="settings-subtab-btn" data-settings-tab="template" role="tab" aria-selected="false">
+            <span class="subtab-icon">📑</span>
+            <span class="subtab-text" data-i18n="settings.tab_template">보고서 서식</span>
+          </button>
+          <button type="button" class="settings-subtab-btn" data-settings-tab="security" role="tab" aria-selected="false">
+            <span class="subtab-icon">🛡️</span>
+            <span class="subtab-text" data-i18n="settings.tab_security">보안 & DB 백업</span>
+          </button>
+          <button type="button" class="settings-subtab-btn" data-settings-tab="users" role="tab" aria-selected="false">
+            <span class="subtab-icon">👥</span>
+            <span class="subtab-text" data-i18n="settings.tab_users">사용자 & 권한 (RBAC)</span>
+          </button>
+          <button type="button" class="settings-subtab-btn" data-settings-tab="ai_usage" role="tab" aria-selected="false">
+            <span class="subtab-icon">📈</span>
+            <span class="subtab-text">AI 사용량 & 비용</span>
+          </button>
+          <button type="button" class="settings-subtab-btn" data-settings-tab="audit" role="tab" aria-selected="false">
+            <span class="subtab-icon">📋</span>
+            <span class="subtab-text">감사 로그 (Audit)</span>
+          </button>
+        </nav>
+
+        <button type="button" class="subtabs-scroll-btn next" id="btnSettingsSubtabsNext" aria-label="다음 탭 보기" title="더 많은 탭 보기">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+      </div>
+      <!-- Settings Cards Form -->
+      <div id="settingsForm" class="settings-form">
+        <div class="settings-panes">
+          
+          <!-- 1. API 및 외부 연동 Tab Pane (AI Engine + Vector Embedding + Jira) -->
+          <div class="settings-tab-pane" id="paneSettingsIntegrations" data-pane="integrations">
+            
+            <!-- Live Status Pills (API 및 외부 연동 탭 전용 상태 요약) -->
+            <div class="settings-status-bar" id="settingsStatusBar" style="margin-bottom: 20px;">
+              <div class="status-pill clickable-pill" id="pillAi" data-jump-tab="integrations" data-jump-card="cardSettingsAi" title="AI 엔진 설정으로 이동">
+                <span class="status-dot" id="dotAi"></span>
+                <span class="status-pill-title" data-i18n="settings.pill_ai">AI 어시스턴트</span>
+                <span class="status-pill-val" id="valAi">확인 중...</span>
+              </div>
+              <div class="status-pill clickable-pill" id="pillVoyage" data-jump-tab="integrations" data-jump-card="cardSettingsVoyage" title="임베딩 AI 설정으로 이동">
+                <span class="status-dot" id="dotVoyage"></span>
+                <span class="status-pill-title" data-i18n="settings.pill_voyage">임베딩 AI</span>
+                <span class="status-pill-val" id="valVoyage">확인 중...</span>
+              </div>
+              <div class="status-pill clickable-pill" id="pillJira" data-jump-tab="integrations" data-jump-card="cardSettingsJira" title="Jira 연동 설정으로 이동">
+                <span class="status-dot" id="dotJira"></span>
+                <span class="status-pill-title" data-i18n="settings.pill_jira">Jira API</span>
+                <span class="status-pill-val" id="valJira">확인 중...</span>
+              </div>
+              <div class="status-pill clickable-pill" id="pillVectors" data-jump-tab="integrations" data-jump-card="cardSettingsVoyage" title="색인 벡터 설정으로 이동">
+                <span class="status-dot" id="dotVectors"></span>
+                <span class="status-pill-title" data-i18n="settings.pill_vectors">색인 벡터</span>
+                <span class="status-pill-val" id="valVectors">0건</span>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              
+              <!-- 1-1. AI Configuration Card -->
+              <div class="settings-card" id="cardSettingsAi">
+                <div class="settings-card-header">
+                  <h3 class="settings-card-title">
+                    <span>🤖</span> AI 엔진 설정 (LLM Assistant)
+                  </h3>
+                  <span class="card-badge" id="badgeAiStatus">대기</span>
+                </div>
+            
+            <div class="settings-field-grid">
+              <div class="settings-field full-width">
+                <div class="toggle-switch-wrap">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="setAiEnabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label">AI 어시스턴트 기능 활성화</span>
+                </div>
+              </div>
+
+              <div class="settings-field full-width" style="margin-top: 4px; margin-bottom: 8px; padding: 10px 14px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 8px;">
+                <div class="toggle-switch-wrap">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="setAiAllowUserKeys">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label" style="font-weight: 700; color: var(--ink);">사용자 개인 AI Model/Key (BYOK) 허용</span>
+                </div>
+                <p style="margin: 4px 0 0 44px; font-size: 11.5px; color: var(--ink-soft); line-height: 1.4;">
+                  활성화하면 일반 사용자가 채팅창에서 직접 자신의 개인 API Key (Gemini, Claude, OpenAI 등)를 등록하고 자유롭게 모델을 전환하며 대화할 수 있습니다.
+                </p>
+              </div>
+
+              <div class="settings-field">
+                <label for="setAiProvider" class="settings-label">AI 제공자 (Provider)</label>
+                <select id="setAiProvider" class="settings-select">
+                  <option value="gemini">Google Gemini</option>
+                  <option value="openai">OpenAI ChatGPT</option>
+                  <option value="anthropic">Anthropic Claude</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="groq">Groq</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="ollama">Ollama</option>
+                  <option value="custom">사용자 정의 (Custom)</option>
+                </select>
+              </div>
+
+              <div class="settings-field">
+                <label for="setAiModel" class="settings-label">모델명 (Model Name) <span id="aiModelBadge" class="optional"></span></label>
+                <input type="text" id="setAiModel" class="settings-input" placeholder="gemini-2.5-flash / gpt-4o-mini">
+              </div>
+
+              <div class="settings-field full-width">
+                <label for="setAiApiKey" class="settings-label">AI API Key</label>
+                <input type="text" id="setAiApiKey" class="settings-input secure-token" placeholder="API Key 입력 (비워두면 기존 키 유지)" autocomplete="off" spellcheck="false" data-lpignore="true">
+              </div>
+
+              <div class="settings-field full-width">
+                <label for="setAiBaseUrl" class="settings-label">AI Custom Base URL <span id="aiBaseUrlBadge" class="optional">(선택)</span></label>
+                <input type="text" id="setAiBaseUrl" class="settings-input" placeholder="기본 게이트웨이 또는 프록시 URL (예: https://generativelanguage.googleapis.com)">
+                <p id="aiCustomUrlHint" class="settings-hint" style="display: none; color: #0284c7; font-size: 12px; margin-top: 4px;">
+                  💡 <strong>사용자 정의(Custom) 제공자:</strong> Base URL(예: <code>https://api.together.xyz/v1</code>)과 모델명(Model Name)을 반드시 입력해야 합니다. (OpenAI /chat/completions 규격 호환)
+                </p>
+              </div>
+            </div>
+
+            <!-- AI Fallback Provider Section -->
+            <div class="fallback-provider-section" style="margin-top: 20px; padding: 16px; border: 1px dashed var(--line-strong); border-radius: 8px; background: rgba(0,0,0,0.015);">
+              <div class="settings-field full-width" style="margin-bottom: 12px;">
+                <div class="toggle-switch-wrap">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="setAiFallbackEnabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label" style="font-weight: 600;">보조 AI 제공자 자동 우회 (Fallback Provider)</span>
+                </div>
+                <div style="font-size: 12px; color: var(--ink-soft); margin-top: 4px; padding-left: 44px;">
+                  주 제공자의 모든 키가 소진/장애(429, 503 등)일 경우에만 자동으로 보조 제공자로 전환하여 중단 없는 서비스를 보장합니다.
+                </div>
+              </div>
+
+              <div id="aiFallbackFields" style="display: none;">
+                <div class="settings-field-grid">
+                  <div class="settings-field">
+                    <label for="setAiFallbackProvider" class="settings-label">보조 AI 제공자</label>
+                    <select id="setAiFallbackProvider" class="settings-select">
+                      <option value="openai">OpenAI ChatGPT</option>
+                      <option value="gemini">Google Gemini</option>
+                      <option value="anthropic">Anthropic Claude</option>
+                      <option value="deepseek">DeepSeek</option>
+                      <option value="groq">Groq</option>
+                      <option value="openrouter">OpenRouter</option>
+                      <option value="ollama">Ollama</option>
+                      <option value="custom">사용자 정의 (Custom)</option>
+                    </select>
+                  </div>
+
+                  <div class="settings-field">
+                    <label for="setAiFallbackModel" class="settings-label">보조 모델명 (Model Name) <span id="aiFallbackModelBadge" class="optional"></span></label>
+                    <input type="text" id="setAiFallbackModel" class="settings-input" placeholder="gpt-4o-mini / gemini-2.5-flash">
+                  </div>
+
+                  <div class="settings-field full-width">
+                    <label for="setAiFallbackApiKey" class="settings-label">보조 AI API Key</label>
+                    <input type="text" id="setAiFallbackApiKey" class="settings-input secure-token" placeholder="보조 제공자 API Key 입력 (비워두면 기존 키 유지)" autocomplete="off" spellcheck="false" data-lpignore="true">
+                  </div>
+
+                  <div class="settings-field full-width">
+                    <label for="setAiFallbackBaseUrl" class="settings-label">보조 AI Custom Base URL <span id="aiFallbackBaseUrlBadge" class="optional">(선택)</span></label>
+                    <input type="text" id="setAiFallbackBaseUrl" class="settings-input" placeholder="기본 게이트웨이 또는 프록시 URL">
+                    <p id="aiFallbackCustomUrlHint" class="settings-hint" style="display: none; color: #0284c7; font-size: 12px; margin-top: 4px;">
+                      💡 <strong>사용자 정의(Custom) 보조 제공자:</strong> Base URL과 모델명을 반드시 입력해야 합니다.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Fallback AI Diagnostic Result Box -->
+                <div class="test-diag-box" id="diagAiFallback" style="margin-top: 12px;"></div>
+              </div>
+            </div>
+
+            <div class="test-diag-box" id="diagAi"></div>
+          </div>
+
+          <!-- 1-2. AI Vector Embeddings & Search Card -->
+          <div class="settings-card" id="cardSettingsVoyage">
+            <div class="settings-card-header">
+              <h3 class="settings-card-title">
+                <span>🌐</span> AI 벡터 임베딩 & 시맨틱 검색 (Semantic Search)
+              </h3>
+              <span class="card-badge" id="badgeVoyageStatus">대기</span>
+            </div>
+
+            <div class="settings-field-grid">
+              <div class="settings-field full-width">
+                <div class="toggle-switch-wrap">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="setVoyageEnabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label">AI 벡터 임베딩 검색 활성화 (자연어 질문 시 시맨틱 검색 적용)</span>
+                </div>
+              </div>
+
+              <div class="settings-field">
+                <label for="setVoyageProvider" class="settings-label">임베딩 제공자 (Vector Provider)</label>
+                <select id="setVoyageProvider" class="settings-select">
+                  <option value="voyage">Voyage AI</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="custom">사용자 정의 (Custom)</option>
+                </select>
+              </div>
+
+              <div class="settings-field">
+                <label for="setVoyageModel" class="settings-label">임베딩 모델 (Embedding Model)</label>
+                <input type="text" id="setVoyageModel" class="settings-input" list="voyage-model-options" placeholder="임베딩 모델명 입력 (선택한 제공자에 맞춤)..." autocomplete="off">
+                <datalist id="voyage-model-options">
+                  <option value="voyage-4-lite">voyage-4-lite (32k context • 1024d)</option>
+                  <option value="voyage-3.5-lite">voyage-3.5-lite (1024d)</option>
+                  <option value="voyage-3-lite">voyage-3-lite (1024d • 표준 추천)</option>
+                  <option value="voyage-3">voyage-3 (1024d • 고성능)</option>
+                  <option value="text-embedding-3-small">text-embedding-3-small (1536d • 경제적)</option>
+                  <option value="text-embedding-3-large">text-embedding-3-large (3072d • 최고정확도)</option>
+                  <option value="gemini-embedding-001">gemini-embedding-001 (3072d • 추천)</option>
+                  <option value="gemini-embedding-2-preview">gemini-embedding-2-preview (신규)</option>
+                </datalist>
+              </div>
+
+              <div class="settings-field full-width" id="voyageBaseUrlField" style="display: none;">
+                <label for="setVoyageBaseUrl" class="settings-label">Custom API Base URL <span class="optional">(사용자 정의/로컬 서버일 때만 필수)</span></label>
+                <input type="text" id="setVoyageBaseUrl" class="settings-input" placeholder="예: http://localhost:11434/v1/embeddings 또는 https://api.mycustom.com/v1/embeddings">
+              </div>
+
+              <div class="settings-field full-width">
+                <label for="setVoyageApiKey" class="settings-label">임베딩 API Key (Embedding API Key)</label>
+                <input type="text" id="setVoyageApiKey" class="settings-input secure-token" placeholder="API Key 입력 (비워두면 기존 키 유지)" autocomplete="off" spellcheck="false" data-lpignore="true">
+              </div>
+            </div>
+
+            <!-- Vector Sync Action Box -->
+            <div class="vector-sync-box">
+              <div class="vector-sync-info">
+                <div class="vector-sync-title">
+                  <span>🔄</span>
+                  <span>전체 데이터 벡터 색인 (Vector Re-indexing)</span>
+                  <span class="vector-sync-stat" id="voyageVectorCountBadge">0건 색인됨</span>
+                </div>
+                <div class="vector-sync-guide">
+                  <div class="guide-item">💡 언제 누르나요?</div>
+                  <ul class="guide-list">
+                    <li>API 키를 새로 등록했거나 임베딩 모델을 변경했을 때 (전체 초기화 및 재색인)</li>
+                    <li>사내 업무나 데이터가 대량 등록되어 AI 시맨틱 검색 색인을 즉각 갱신하고 싶을 때</li>
+                  </ul>
+                  <div class="guide-note">※ 평상시에는 업무 등록 및 데이터 동기화 시 자동으로 백그라운드 색인되므로 매번 누르실 필요는 없습니다.</div>
+                </div>
+              </div>
+              <button type="button" class="btn-settings-sync" id="btnSyncVectors">
+                <span>🔄</span> 전체 벡터 즉시 색인
+              </button>
+            </div>
+
+            <div class="test-diag-box" id="diagVoyage"></div>
+          </div>
+
+          <!-- 1-3. Atlassian Jira Integration Card -->
+          <div class="settings-card" id="cardSettingsJira">
+            <div class="settings-card-header">
+              <h3 class="settings-card-title">
+                <span>🎫</span> Atlassian Jira 외부 연동 (선택 사항)
+              </h3>
+              <span class="card-badge" id="badgeJiraStatus">비활성화</span>
+            </div>
+            <p class="settings-card-desc">Atlassian Jira를 연동할 기업만 활성화하십시오. 비활성화 시 사내 업무 관리 기능이 100% 로컬 독립 모드로 동작합니다.</p>
+
+            <div class="settings-field-grid">
+              <div class="settings-field full-width">
+                <div class="toggle-switch-wrap">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="setJiraEnabled">
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label">Jira 자동 동기화 활성화 (선택 사항)</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="jiraConfigBody" style="display:none; margin-top:12px;">
+              <div class="settings-field-grid">
+                <div class="settings-field">
+                  <label for="setJiraBaseUrl" class="settings-label">Jira Cloud 도메인 주소 (Base URL)</label>
+                  <input type="text" id="setJiraBaseUrl" class="settings-input" placeholder="https://your-domain.atlassian.net">
+                </div>
+
+                <div class="settings-field">
+                  <label for="setJiraEmail" class="settings-label">Jira 계정 이메일</label>
+                  <input type="text" id="setJiraEmail" class="settings-input" placeholder="user@company.com" autocomplete="off" name="jira_user_email">
+                </div>
+
+                <div class="settings-field">
+                  <label for="setJiraApiToken" class="settings-label">Jira API Token</label>
+                  <input type="text" id="setJiraApiToken" class="settings-input secure-token" placeholder="id.atlassian.com에서 발급된 토큰" autocomplete="off" spellcheck="false" data-lpignore="true">
+                </div>
+
+                <div class="settings-field">
+                  <label for="setJiraProjectKey" class="settings-label">기본 프로젝트 키 (Default Project Key)</label>
+                  <input type="text" id="setJiraProjectKey" class="settings-input" placeholder="예: PROJ">
+                  <p class="settings-hint">※ 부서별 매핑에 등록되지 않은 부서나 미지정 사용자가 티켓을 등록할 때 자동 지정되는 대체 프로젝트 키입니다.</p>
+                </div>
+              </div>
+
+              <!-- Jira Connector Wizard Box -->
+              <div style="margin-top: 14px; padding: 14px; border-radius: 8px; background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px dashed var(--border-color, #d0d7de);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                  <div>
+                    <strong style="font-size: 13px; color: var(--text-color);">⚡ Jira 연동 마법사 (Connector Wizard)</strong>
+                    <p style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0;">입력된 접속 정보로 고객사 Jira 조직의 Project, Issue Type, Status를 자동 감지하고 매핑합니다.</p>
+                  </div>
+                  <button type="button" class="btn-settings-test" id="btnJiraWizardInspect" style="padding: 6px 14px; font-size: 12px; margin: 0;">
+                    <span>🔍</span> 연결 테스트 & 자동 스캔
+                  </button>
+                </div>
+                <div id="jiraWizardResult" style="display:none; margin-top: 10px; font-size: 12px;"></div>
+              </div>
+
+              <div class="test-diag-box" id="diagJira"></div>
+            </div>
+          </div>
+
+          <!-- Outgoing Webhooks Settings Card -->
+          <div class="settings-card" id="cardSettingsWebhooks">
+            <div class="settings-card-header">
+              <h3 class="settings-card-title">
+                <span>🔔</span> 실시간 알림 웹훅 연동 (Outgoing Webhooks)
+              </h3>
+              <span class="card-badge" id="badgeWebhooksStatus">대기</span>
+            </div>
+            <p class="settings-card-desc">업무 배정, 상태 변경, 긴급 마감(D-Day/지연), 댓글 작성 시 Slack, Microsoft Teams 및 사내 봇으로 실시간 웹훅을 자동 발송합니다.</p>
+
+            <div class="settings-field-grid">
+              <div class="settings-field full-width">
+                <label for="setSlackWebhookUrl" class="settings-label">Slack Incoming Webhook URL</label>
+                <input type="text" id="setSlackWebhookUrl" class="settings-input" placeholder="https://hooks.slack.com/services/T.../B.../..." autocomplete="off">
+                <p class="settings-hint">Slack 앱 관리에서 'Incoming WebHooks'를 추가하고 발급된 Webhook URL을 입력하세요.</p>
+              </div>
+
+              <div class="settings-field full-width">
+                <label for="setTeamsWebhookUrl" class="settings-label">Microsoft Teams Webhook URL</label>
+                <input type="text" id="setTeamsWebhookUrl" class="settings-input" placeholder="https://outlook.office.com/webhook/... 또는 Power Automate Webhook URL" autocomplete="off">
+                <p class="settings-hint">Teams 채널 커넥터(Incoming Webhook) 또는 Power Automate 워크플로 트리거 URL을 입력하세요.</p>
+              </div>
+
+              <div class="settings-field full-width">
+                <label for="setGenericWebhookUrl" class="settings-label">범용 사내 웹훅 (Generic / Discord / Telegram / Custom Webhook URL)</label>
+                <input type="text" id="setGenericWebhookUrl" class="settings-input" placeholder="https://api.yourcompany.com/webhook/argos-alerts" autocomplete="off">
+                <p class="settings-hint">표준 JSON POST 페이로드 ({event, title, content, sender, link_id, tag})를 전송합니다.</p>
+              </div>
+            </div>
+
+            <div class="test-diag-box" id="diagWebhooks"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Work Categories Management Tab Pane -->
+      <div class="settings-tab-pane" id="paneSettingsCategories" data-pane="categories" hidden style="display: none;">
+          <div class="settings-card" id="cardSettingsCategories">
+            <div class="settings-card-header">
+              <h3 class="settings-card-title">
+                <span>📁</span> 업무 카테고리 / 프로젝트 관리 (Work Categories & Projects)
+              </h3>
+              <button type="button" class="btn-settings-test" id="btnSettingsAddCategory" style="padding: 5px 12px; font-size: 12px; margin: 0; background: var(--accent-2, #0284c7); color: #fff;">
+                <span>➕</span> 새 카테고리 / 프로젝트 추가
+              </button>
+            </div>
+            <p class="settings-card-desc">시스템의 업무 카테고리(프로젝트)와 로컬 카드 코드 접두사(Prefix) 등을 한곳에서 등록, 수정, 삭제합니다.</p>
+
+            <div style="overflow-x: auto; margin-top: 12px;">
+              <table class="settings-category-table" style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+                <thead>
+                  <tr style="background: var(--code-bg, rgba(0,0,0,0.03)); border-bottom: 2px solid var(--line, #e2e8f0); text-align: left;">
+                    <th style="padding: 8px 10px;">ID</th>
+                    <th style="padding: 8px 10px;">카테고리명</th>
+                    <th style="padding: 8px 10px;">로컬 Prefix</th>
+                    <th style="padding: 8px 10px;" id="thSettingsCategoryJiraKey">Jira Key</th>
+                    <th style="padding: 8px 10px; text-align: center;">작업 건수</th>
+                    <th style="padding: 8px 10px; text-align: right;">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="settingsCategoryTableBody">
+                  <!-- Dynamically rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 제품 규격 템플릿 Tab Pane -->
+        <div class="settings-tab-pane" id="paneSettingsProductCategories" data-pane="product_categories" hidden style="display: none;">
+          <div class="settings-card" id="cardSettingsProductCategories">
+            <div class="settings-card-header settings-responsive-header">
+              <div class="header-text-wrap">
+                <h3 class="settings-card-title">
+                  <span>📦</span> 제품 카테고리 및 규격 템플릿 관리 (Product Spec Builder)
+                </h3>
+                <p class="settings-card-desc" style="margin-top: 4px; margin-bottom: 0;">
+                  회사 제품군(하드웨어, 소프트웨어, IoT, 소재 등)에 맞춰 카테고리를 추가하고, 각 제품군별 상세 사양 입력 항목을 자유롭게 정의합니다.
+                </p>
+              </div>
+              <button type="button" class="btn-settings-sync btn-add-cat-responsive" id="btnOpenAddProductCatModal">
+                <span>➕</span> 새 카테고리 추가
+              </button>
+            </div>
+
+            <div class="settings-table-wrapper">
+              <table class="settings-prod-cat-table">
+                <thead>
+                  <tr>
+                    <th style="width: 140px; white-space: nowrap;">카테고리명</th>
+                    <th style="min-width: 220px;">정의된 규격 입력 항목 (Spec Fields)</th>
+                    <th style="width: 120px; text-align: right; white-space: nowrap;">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="settingsProductCategoryTableBody">
+                  <!-- Dynamically rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Weekly Report Template Engine Tab Pane -->
+        <div class="settings-tab-pane" id="paneSettingsTemplate" data-pane="template" hidden style="display: none;">
+          <div class="settings-card">
+            <div class="settings-card-header">
+              <h3 class="settings-card-title">
+                <span>📑</span> 주간 업무 보고서 엑셀 템플릿 엔진 (Report Template Engine)
+              </h3>
+              <span class="card-badge" id="badgeReportTemplateStatus">확인 중...</span>
+            </div>
+            <p class="settings-card-desc">고객사의 고유 Excel 양식(.xlsx)을 업로드하여 주간 업무 보고서 출력 시 해당 서식대로 자동 생성합니다.</p>
+
+            <div style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 14px; margin-bottom: 14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div>
+                  <div style="font-weight:600; font-size:13px;" id="templateCurrentInfo">현재 서식: 기본 내장 R&D 서식</div>
+                  <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="templateDetailInfo">별도 등록된 템플릿이 없을 경우 표준 서식으로 생성됩니다.</div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" class="btn-settings-test" id="btnDownloadSampleTemplate" style="font-size:12px; padding:6px 12px; margin:0;">
+                    <span>📥</span> 샘플 양식 다운로드
+                  </button>
+                  <button type="button" class="btn-settings-test" id="btnResetTemplate" style="font-size:12px; padding:6px 12px; margin:0; color:var(--danger, #e53935); display:none;">
+                    <span>🗑</span> 기본 서식으로 복원
+                  </button>
+                </div>
+              </div>
+
+              <div style="margin-top:14px; display:flex; gap:10px; align-items:center;">
+                <input type="file" id="inputTemplateFile" accept=".xlsx" style="display:none;" />
+                <button type="button" class="btn-settings-sync" id="btnUploadTemplate" style="font-size:12px; padding:7px 16px; margin:0;">
+                  <span>📤</span> 새 엑셀 템플릿(.xlsx) 업로드
+                </button>
+                <span id="templateUploadStatus" style="font-size:12px; color:var(--text-muted);"></span>
+              </div>
+            </div>
+
+            <!-- Tag Cheat Sheet -->
+            <details style="background:var(--bg-card, #fff); border:1px solid var(--border-color, #e0e0e0); border-radius:6px; padding:10px 14px; font-size:12px;">
+              <summary style="cursor:pointer; font-weight:600; color:var(--primary, #0066cc);">💡 템플릿 치환 태그(Placeholder Tags) 안내서 보기</summary>
+              <div style="margin-top:10px; line-height:1.6; color:var(--text-color);">
+                <p>엑셀 파일의 셀에 아래 태그를 입력해두면 보고서 생성 시 실제 데이터로 자동 치환됩니다.</p>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:8px; margin-top:8px;">
+                  <div><code>{{workspace_name}}</code> : 워크스페이스 명칭</div>
+                  <div><code>{{start_date}}</code> : 보고 시작일</div>
+                  <div><code>{{end_date}}</code> : 보고 마감일</div>
+                  <div><code>{{assignee}}</code> : 담당자 필터명</div>
+                  <div><code>{{date_range}}</code> : 기간 (YYYY-MM-DD ~ YYYY-MM-DD)</div>
+                  <div><code>{{generated_at}}</code> : 보고서 생성 일시</div>
+                </div>
+                <div style="margin-top:8px; border-top:1px solid var(--border-color, #eee); padding-top:8px;">
+                  <strong>표(Table) 행 반복 태그 (한 행에 이 태그들을 배치하면 데이터 개수만큼 복제 생성됩니다):</strong>
+                  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:6px; margin-top:6px;">
+                    <div><code>{{category}}</code> : 구분</div>
+                    <div><code>{{task_name}}</code> : 업무명</div>
+                    <div><code>{{subtask}}</code> : 세부 업무명</div>
+                    <div><code>{{assignee}}</code> : 담당자</div>
+                    <div><code>{{type}}</code> : 유형 (일간/주간)</div>
+                    <div><code>{{date}}</code> : 일자</div>
+                    <div><code>{{details}}</code> : 상세내용</div>
+                    <div><code>{{progress}}</code> : 진척률(%)</div>
+                    <div><code>{{status}}</code> : 상태</div>
+                    <div><code>{{due_date}}</code> : 마감일</div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <!-- 5. Enterprise Security & Database Backup Tab Pane -->
+        <div class="settings-tab-pane" id="paneSettingsSecurity" data-pane="security" hidden style="display: none;">
+          <!-- 5-1. Enterprise Security Status Card -->
+          <div class="settings-card" id="cardEnterpriseSecurity">
+            <div class="settings-card-header">
+              <h3 class="settings-card-title">
+                <span>🛡️</span> 엔터프라이즈 보안 및 무결성 보호 (Enterprise Security)
+              </h3>
+              <span class="card-badge connected" id="badgeSecurityStatus">보안 규격 준수</span>
+            </div>
+            <p class="settings-card-desc">
+              기업 보안 감사(Security Audit) 요건을 충족하기 위한 다중 보안 방어 및 데이터 무결성 보호 상태입니다.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px;">
+              <div style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 12px 14px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">세션 토큰 보호</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #16a34a; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                  <span>🔒</span> HttpOnly Secure Cookie
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                  브라우저 F12 콘솔 및 XSS 스크립트 탈취 원천 차단
+                </div>
+              </div>
+
+              <div style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 12px 14px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">전송 계층 암호화 (SSL/TLS)</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #0284c7; margin-top: 4px; display: flex; align-items: center; gap: 6px;" id="secHttpsStatusText">
+                  <span>🌐</span> HTTPS 암호화 지원
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                  Nginx / Cloudflare / Native TLS 인증서 연동
+                </div>
+              </div>
+
+              <div style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 12px 14px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">동시 수정 덮어쓰기 방지</div>
+                <div style="font-size: 13.5px; font-weight: 700; color: #7c3aed; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                  <span>⚡</span> 낙관적 락 (Optimistic Lock)
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
+                  버전(version) 검증 기반 409 Conflict 동시성 보호
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5-2. Database Auto Backup & 1-Click Disaster Recovery Card -->
+          <div class="settings-card" id="cardDbBackup">
+            <div class="settings-card-header">
+              <div class="header-text-wrap">
+                <h3 class="settings-card-title">
+                  <span>💾</span> 자동 백업 및 1-클릭 재해 복구 (Disaster Recovery)
+                </h3>
+                <p class="settings-card-desc" style="margin-top: 4px; margin-bottom: 0;">
+                  SQLite Online Backup API를 통해 서비스 중단 없이 실시간 WAL 스냅샷을 생성하고 gzip으로 압축 보관합니다.
+                </p>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="file" id="inputImportBackupFile" accept=".db.gz,.db" style="display: none;" />
+                <button type="button" class="btn-settings-test" id="btnImportBackup" style="padding: 7px 14px; margin: 0; font-size: 12.5px; font-weight: 600;">
+                  <span>📥</span> 외부 백업 가져오기
+                </button>
+                <button type="button" class="btn-settings-sync" id="btnTriggerManualBackup" style="padding: 7px 16px; margin: 0; font-size: 12.5px;">
+                  <span>⚡</span> 즉시 백업 생성
+                </button>
+              </div>
+            </div>
+
+            <!-- Backup Storage Directory Configuration Bar -->
+            <div style="background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e0e0e0); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                <div style="font-weight: 600; font-size: 12.5px; display: flex; align-items: center; gap: 6px;">
+                  <span>📂</span> 백업 저장 위치 (Storage Directory)
+                  <span id="badgeBackupDirCustom" style="display:none; font-size:10.5px; padding:1px 6px; border-radius:10px; background:#e0f2fe; color:#0369a1; font-weight:700;">사용자 지정</span>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted);">
+                  외장 드라이브(D:\, E:\), 사내 NAS 공유 폴더, Google Drive / OneDrive 동기화 경로 지정 가능
+                </div>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="inputBackupDir" class="form-input" placeholder="기본 경로: ./data/backups" style="flex: 1; font-size: 12px; font-family: monospace; padding: 6px 10px;" />
+                <button type="button" class="btn-settings-test" id="btnSaveBackupDir" style="padding: 6px 14px; font-size: 12px; font-weight: 600; white-space: nowrap;">
+                  경로 저장
+                </button>
+                <button type="button" class="btn-settings-test" id="btnResetBackupDir" style="padding: 6px 12px; font-size: 12px; color: var(--text-muted); white-space: nowrap;" title="기본 경로(./data/backups)로 초기화">
+                  기본값
+                </button>
+              </div>
+            </div>
+
+            <!-- Backup Status Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg-hover, rgba(0,0,0,0.02)); border: 1px solid var(--border-color, #e0e0e0); border-radius: 6px; margin-bottom: 12px; font-size: 12px;">
+              <div>
+                <strong>백업 주기:</strong> <span style="color:#0284c7; font-weight:600;">매일 24시간 자동 실행</span> (최근 14일치 안전 보관)
+              </div>
+              <div id="backupDbStatsText" style="color: var(--text-muted);">
+                데이터베이스 크기: 계산 중...
+              </div>
+            </div>
+
+            <!-- Backups Table -->
+            <div class="settings-table-wrapper" style="max-height: 380px; overflow-y: auto;">
+              <table class="settings-prod-cat-table" id="tableBackupsList">
+                <thead>
+                  <tr>
+                    <th style="min-width: 200px;">백업 파일명</th>
+                    <th style="width: 140px;">생성 일시</th>
+                    <th style="width: 90px; text-align: center;">구분</th>
+                    <th style="width: 100px; text-align: right;">압축 용량</th>
+                    <th style="min-width: 150px;">설명 / 비고</th>
+                    <th style="width: 160px; text-align: right; white-space: nowrap;">작업</th>
+                  </tr>
+                </thead>
+                <tbody id="backupListTableBody">
+                  <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">백업 목록을 불러오는 중...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="margin-top: 10px; font-size: 11.5px; color: var(--text-muted); line-height: 1.4;">
+              💡 <strong>1-Click 복구 보호:</strong> 복원 시 실시간 데이터 손실을 방지하기 위해 현재 DB 상태를 <code>argos_safety_before_restore_*.db.gz</code>로 자동 백업한 뒤 교체하므로 안심하고 복원할 수 있습니다.
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. 사용자 및 역할 권한 관리 (RBAC) Tab Pane -->
+        <div class="settings-tab-pane" id="paneSettingsUsers" data-pane="users" hidden style="display: none;">
+          <div class="settings-card" id="cardSettingsUsers">
+            <div class="settings-card-header settings-responsive-header">
+              <div class="header-text-wrap">
+                <h3 class="settings-card-title">
+                  <span>👥</span> 사내 사용자 및 역할 권한 관리 (User & RBAC Management)
+                </h3>
+                <p class="settings-card-desc" style="margin-top: 4px; margin-bottom: 0;">
+                  조직 구성원의 계정, 소속 부서, 역할 권한(Admin, Manager, Member, Viewer) 및 접근 권한을 안전하게 통합 관리합니다.
+                </p>
+              </div>
+              <button type="button" class="btn-settings-test" id="btnAdminOpenAddUser" style="padding: 6px 14px; font-size: 12.5px; margin: 0; background: var(--accent-2, #0284c7); color: #fff; font-weight: 600;">
+                <span>➕</span> 새 사용자 등록
+              </button>
+            </div>
+
+            <!-- User RBAC Summary Cards -->
+            <div class="admin-users-stats-bar" id="adminUsersStatsBar" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; margin-bottom: 16px;">
+              <div class="admin-stat-card" style="flex: 1; min-width: 140px; padding: 12px 14px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">라이선스 Seat 현황</div>
+                <div style="font-size: 18px; font-weight: 700; color: var(--ink); margin-top: 2px;" id="statUserSeats">- / -</div>
+              </div>
+              <div class="admin-stat-card" style="flex: 1; min-width: 110px; padding: 12px 14px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">🛡️ Admin (관리자)</div>
+                <div style="font-size: 18px; font-weight: 700; color: #ef4444; margin-top: 2px;" id="statUserAdmins">-</div>
+              </div>
+              <div class="admin-stat-card" style="flex: 1; min-width: 110px; padding: 12px 14px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">💼 Manager (부서장)</div>
+                <div style="font-size: 18px; font-weight: 700; color: #3b82f6; margin-top: 2px;" id="statUserManagers">-</div>
+              </div>
+              <div class="admin-stat-card" style="flex: 1; min-width: 110px; padding: 12px 14px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">👤 Member (팀원)</div>
+                <div style="font-size: 18px; font-weight: 700; color: #10b981; margin-top: 2px;" id="statUserMembers">-</div>
+              </div>
+              <div class="admin-stat-card" style="flex: 1; min-width: 110px; padding: 12px 14px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">👁️ Viewer (조회전용)</div>
+                <div style="font-size: 18px; font-weight: 700; color: #64748b; margin-top: 2px;" id="statUserViewers">-</div>
+              </div>
+              <div class="admin-stat-card" style="flex: 1; min-width: 110px; padding: 12px 14px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px;">
+                <div style="font-size: 11px; color: #b45309; font-weight: 600;">🟡 승인 대기 (Pending)</div>
+                <div style="font-size: 18px; font-weight: 700; color: #d97706; margin-top: 2px;" id="statUserPending">0명</div>
+              </div>
+            </div>
+
+            <!-- Role Permissions Cheat Sheet Banner -->
+            <div style="padding: 10px 14px; border-radius: 8px; background: rgba(2, 132, 199, 0.05); border: 1px solid rgba(2, 132, 199, 0.18); font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 14px;">
+              <strong>🛡️ ArgosWorks 역할별 권한 매트릭스 (RBAC Matrix):</strong><br>
+              • <strong>Admin:</strong> 전사 모든 부서 업무 열람/수정/삭제, 시스템 API 및 백업, 사용자 계정 생성/권한 부여 등 전체 통제 권한 보유<br>
+              • <strong>Manager (부서장/PM):</strong> 본인 부서 전체 업무 및 비공개(인사/보안) 열람/승인, 타 부서의 일반 공개 업무 열람 허용<br>
+              • <strong>Member (일반 팀원):</strong> 본인 부서 일반 업무 및 본인이 배정된 협업 업무 열람/수정/기록 작성 가능 (비공개 업무 차단)<br>
+              • <strong>Viewer (조회 전용/외부 감사진):</strong> 등록된 공개 업무만 읽기 전용으로 열람 가능 (수정, 삭제, 신규 등록 절대 차단)
+            </div>
+
+            <!-- Search & Filters Toolbar -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <input type="text" id="adminUserSearchInput" class="settings-input" placeholder="🔍 아이디, 성명, 이메일 검색..." style="width: 200px; padding: 6px 10px; font-size: 12px;">
+                <select id="adminUserFilterStatus" class="settings-input" style="width: 140px; padding: 6px 10px; font-size: 12px;">
+                  <option value="">모든 상태 (All Status)</option>
+                  <option value="pending">🟡 승인 대기 (Pending)</option>
+                  <option value="active">🟢 정상 활성 (Active)</option>
+                  <option value="locked">🔴 잠금 (Locked)</option>
+                  <option value="rejected">❌ 반려 (Rejected)</option>
+                </select>
+                <select id="adminUserFilterRole" class="settings-input" style="width: 130px; padding: 6px 10px; font-size: 12px;">
+                  <option value="">모든 역할 (All Roles)</option>
+                  <option value="admin">🛡️ Admin (관리자)</option>
+                  <option value="manager">💼 Manager (부서장)</option>
+                  <option value="member">👤 Member (팀원)</option>
+                  <option value="viewer">👁️ Viewer (조회전용)</option>
+                </select>
+                <select id="adminUserFilterDept" class="settings-input" style="width: 140px; padding: 6px 10px; font-size: 12px;">
+                  <option value="">전체 워크스페이스 (All Workspaces)</option>
+                </select>
+              </div>
+              <button type="button" class="btn-settings-test" id="btnAdminReloadUsers" style="padding: 5px 12px; font-size: 11.5px; margin: 0;">
+                <span>🔄</span> 새로고침
+              </button>
+            </div>
+
+            <!-- Users Table -->
+            <div style="overflow-x: auto;">
+              <table class="settings-category-table" style="width: 100%; border-collapse: collapse; font-size: 12.5px;">
+                <thead>
+                  <tr style="background: var(--code-bg, rgba(0,0,0,0.03)); border-bottom: 2px solid var(--line, #e2e8f0); text-align: left;">
+                    <th style="padding: 8px 10px; width: 50px;">ID</th>
+                    <th style="padding: 8px 10px;">사용자 ID</th>
+                    <th style="padding: 8px 10px;">성명 (Name)</th>
+                    <th style="padding: 8px 10px;">워크스페이스</th>
+                    <th style="padding: 8px 10px;">이메일</th>
+                    <th style="padding: 8px 10px; text-align: center;">역할 권한</th>
+                    <th style="padding: 8px 10px; text-align: center;">계정 상태</th>
+                    <th style="padding: 8px 10px; text-align: right;">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUserTableBody">
+                  <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">사용자 목록을 불러오는 중...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. AI 사용량 & 비용 모니터링 (AI Usage & Cost Monitoring) Tab Pane -->
+        <div class="settings-tab-pane" id="paneSettingsAiUsage" data-pane="ai_usage" hidden style="display: none;">
+          <div class="settings-card">
+            <div class="settings-card-header settings-responsive-header">
+              <div class="header-text-wrap">
+                <h3 class="settings-card-title">
+                  <span>📈</span> AI 어시스턴트 토큰 사용량 & 비용 모니터링 (AI Usage & Token Metrics)
+                </h3>
+                <p class="settings-card-desc" style="margin-top: 4px; margin-bottom: 0;">
+                  사내 구성원 및 부서별 AI 토큰 소모량, 호출 횟수, 모델별 점유율을 실시간으로 추적하여 투명한 운영 비용을 보장합니다.
+                </p>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="selectAiUsagePeriod" class="choivis-select" style="height: 32px; font-size: 12px; padding: 0 8px;">
+                  <option value="today">오늘 (Today)</option>
+                  <option value="week">최근 7일 (Last 7 Days)</option>
+                  <option value="month" selected>최근 30일 (Last 30 Days)</option>
+                </select>
+                <button type="button" class="btn-settings-test" id="btnRefreshAiUsage" style="padding: 5px 12px; font-size: 12px; margin: 0;">
+                  <span>🔄</span> 새로고침
+                </button>
+              </div>
+            </div>
+
+            <!-- AI Summary Metric Cards -->
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 14px; margin-bottom: 20px;">
+              <div style="flex: 1; min-width: 140px; padding: 14px 16px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">총 AI 호출 수 (API Calls)</div>
+                <div style="font-size: 20px; font-weight: 700; color: var(--ink); margin-top: 4px;" id="statAiTotalCalls">-</div>
+              </div>
+              <div style="flex: 1; min-width: 140px; padding: 14px 16px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">총 소모 토큰 (Total Tokens)</div>
+                <div style="font-size: 20px; font-weight: 700; color: #2563eb; margin-top: 4px;" id="statAiTotalTokens">-</div>
+              </div>
+              <div style="flex: 1; min-width: 140px; padding: 14px 16px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">프롬프트 토큰 (Prompt)</div>
+                <div style="font-size: 20px; font-weight: 700; color: #059669; margin-top: 4px;" id="statAiPromptTokens">-</div>
+              </div>
+              <div style="flex: 1; min-width: 140px; padding: 14px 16px; background: var(--code-bg, rgba(0,0,0,0.03)); border: 1px solid var(--line, #e2e8f0); border-radius: 8px;">
+                <div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">생성 토큰 (Completion)</div>
+                <div style="font-size: 20px; font-weight: 700; color: #7c3aed; margin-top: 4px;" id="statAiCompletionTokens">-</div>
+              </div>
+            </div>
+
+            <!-- Two-column tables: By User & By Provider -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+              <div>
+                <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--ink);">👤 사용자별 사용 현황 (Top Users)</h4>
+                <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 6px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                      <tr style="background: var(--code-bg); text-align: left; border-bottom: 1px solid var(--line);">
+                        <th style="padding: 7px 10px;">사용자</th>
+                        <th style="padding: 7px 10px; text-align: center;">호출수</th>
+                        <th style="padding: 7px 10px; text-align: right;">총 토큰</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tableAiUsageByUser">
+                      <tr><td colspan="3" style="text-align: center; padding: 16px; color: var(--text-muted);">데이터 없음</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--ink);">🤖 모델/엔진별 점유율 (By Model)</h4>
+                <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 6px;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead>
+                      <tr style="background: var(--code-bg); text-align: left; border-bottom: 1px solid var(--line);">
+                        <th style="padding: 7px 10px;">제공자 / 모델</th>
+                        <th style="padding: 7px 10px; text-align: center;">호출수</th>
+                        <th style="padding: 7px 10px; text-align: right;">총 토큰</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tableAiUsageByModel">
+                      <tr><td colspan="3" style="text-align: center; padding: 16px; color: var(--text-muted);">데이터 없음</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. 감사 로그 조회 (Audit Logs Explorer) Tab Pane -->
+        <div class="settings-tab-pane" id="paneSettingsAudit" data-pane="audit" hidden style="display: none;">
+          <div class="settings-card">
+            <div class="settings-card-header settings-responsive-header">
+              <div class="header-text-wrap">
+                <h3 class="settings-card-title">
+                  <span>📋</span> 시스템 감사 로그 (Enterprise Audit Trail Explorer)
+                </h3>
+                <p class="settings-card-desc" style="margin-top: 4px; margin-bottom: 0;">
+                  로그인, 업무 수정·삭제, 권한 변경, 백업 복원 등 시스템 내 모든 주요 보안 이벤트를 위변조 방지 형태로 영구 보관합니다.
+                </p>
+              </div>
+            </div>
+
+            <!-- Audit Filter Toolbar -->
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; margin-bottom: 14px;">
+              <select id="selectAuditAction" class="choivis-select" style="height: 32px; font-size: 12px; padding: 0 8px;">
+                <option value="">전체 이벤트 (All Actions)</option>
+                <option value="LOGIN">로그인 (LOGIN)</option>
+                <option value="LOGOUT">로그아웃 (LOGOUT)</option>
+                <option value="RECORD_CREATE">업무 생성 (RECORD_CREATE)</option>
+                <option value="RECORD_UPDATE">업무 수정 (RECORD_UPDATE)</option>
+                <option value="RECORD_DELETE">업무 삭제 (RECORD_DELETE)</option>
+                <option value="SCHEDULE_APPROVE">일정 승인 (SCHEDULE_APPROVE)</option>
+                <option value="SCHEDULE_REJECT">일정 반려 (SCHEDULE_REJECT)</option>
+                <option value="USER_ROLE_CHANGE">권한 변경 (USER_ROLE_CHANGE)</option>
+                <option value="SETTINGS_CHANGE">설정 변경 (SETTINGS_CHANGE)</option>
+              </select>
+              <input type="text" id="inputAuditUser" class="choivis-search-input" placeholder="사용자명 검색..." style="height: 32px; font-size: 12px; max-width: 150px;">
+              <button type="button" class="btn-settings-test" id="btnFilterAudit" style="padding: 5px 12px; font-size: 12px; margin: 0;">
+                <span>🔍</span> 조회
+              </button>
+            </div>
+
+            <!-- Audit Logs Table -->
+            <div style="overflow-x: auto; border: 1px solid var(--line); border-radius: 6px;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <thead>
+                  <tr style="background: var(--code-bg); text-align: left; border-bottom: 1px solid var(--line);">
+                    <th style="padding: 8px 10px; width: 150px;">일시 (Timestamp)</th>
+                    <th style="padding: 8px 10px; width: 120px;">사용자</th>
+                    <th style="padding: 8px 10px; width: 110px;">IP 주소</th>
+                    <th style="padding: 8px 10px; width: 140px; text-align: center;">이벤트 유형</th>
+                    <th style="padding: 8px 10px; width: 120px;">대상 리소스</th>
+                    <th style="padding: 8px 10px;">상세 내역 (Details)</th>
+                  </tr>
+                </thead>
+                <tbody id="tableAuditLogsBody">
+                  <tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted);">감사 로그를 불러오는 중...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="settings-actions" id="settingsActionsBar">
+          <button type="button" class="btn-settings-save" id="btnSaveSettings">
+            <span>💾</span> <span data-i18n="settings.btn_save">설정 저장</span>
+          </button>
+          <button type="button" class="btn-settings-test" id="btnTestConnections">
+            <span>🔌</span> <span data-i18n="settings.btn_test">연결 테스트</span>
+          </button>
+        </div>
+
+        <div class="settings-msg" id="settingsMsg"></div>
+      </div>
+    </div>
+  </section>
+
+<!-- === AI Chat Tab === -->
+<section id="sectionChat" class="content-section" hidden>
+  <div class="chat-container">
+    <!-- Sessions Sidebar -->
+    <aside id="chatSidebar" class="chat-sidebar">
+      <div class="chat-sidebar-header">
+        <div class="chat-sidebar-header-left">
+          <button type="button" id="btnCollapseSidebar" class="chat-btn-toggle-icon" title="사이드바 접기">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+              <path d="M14 9l-3 3 3 3"/>
+            </svg>
+          </button>
+          <h3 class="chat-sidebar-title">대화 목록</h3>
+        </div>
+        <button type="button" id="btnNewChat" class="chat-btn-new" title="새 대화">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="chatSessionsList" class="chat-sessions-list"></div>
+    </aside>
+    <!-- Chat Sidebar Backdrop for Mobile -->
+    <div id="chatSidebarBackdrop" class="chat-sidebar-backdrop" hidden></div>
+    <!-- Chat Main -->
+    <div class="chat-main">
+      <!-- Chat Main Header -->
+      <div class="chat-main-header" id="chatMainHeader">
+        <div class="chat-main-header-left">
+          <button type="button" id="btnExpandSidebar" class="chat-btn-open-sidebar" title="대화 목록 열기 / 닫기">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+              <path d="M13 9l3 3-3 3"/>
+            </svg>
+            <span>대화 목록</span>
+          </button>
+          <span class="chat-active-title" id="chatActiveTitle"></span>
+        </div>
+        <div class="chat-main-header-right">
+          <button type="button" id="btnMainNewChat" class="chat-btn-pill-new" title="새 대화 시작">
+            <span>➕</span> 새 대화
+          </button>
+        </div>
+      </div>
+      <div id="chatMessages" class="chat-messages">
+        <div class="chat-welcome">
+          <p data-i18n="chat.welcome">무엇이든 물어보세요. 업무 카드 검색, 일정 확인, 업무 관리를 도와드립니다.</p>
+        </div>
+      </div>
+      <form id="chatForm" class="chat-input-area">
+        <div class="chat-input-wrap">
+          <textarea id="chatInput" class="chat-input" placeholder="메시지를 입력하세요..." rows="1" maxlength="2000"></textarea>
+          
+          <div class="chat-input-bottom-bar">
+            <!-- Model Selector Pill (Only visible when Master enables BYOK) -->
+            <div id="chatModelSelectorBar" class="chat-model-selector-bar" hidden>
+              <div class="chat-model-dropdown-wrap">
+                <button type="button" id="btnChatModelSelect" class="chat-model-btn" title="Model 변경">
+                  <span class="chat-model-btn-name" id="chatModelCurrentName">Gemini 3.8 Flash Medium</span>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="chat-model-btn-arrow"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+
+                <!-- Dropdown Menu styled exactly like the design specification -->
+                <div id="chatModelDropdownMenu" class="chat-model-dropdown-menu" hidden>
+                  <div class="cmd-header" data-i18n="chat.model_header">Model</div>
+                  <div class="cmd-list" id="chatModelDropdownList">
+                    <!-- Dynamically populated via renderChatModelList() -->
+                  </div>
+                  <div class="cmd-divider"></div>
+                  <button type="button" class="cmd-item cmd-add-btn" id="btnChatAddModel">
+                    <span class="cmd-add-icon">➕</span>
+                    <span class="cmd-add-text" data-i18n="chat.model_add">다른 모델 / 키 추가...</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="chatSendBtn" class="chat-send-btn" title="전송">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+</div><!-- /.page -->
+</main><!-- /.main-viewport -->
+
+<!-- Floating Scroll To Top Button -->
+<button id="btn-floating-scroll-top"
+        class="btn-floating-scroll-top"
+        type="button"
+        title="맨 위로 이동"
+        aria-label="맨 위로 이동">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 19V5M5 12l7-7 7 7"/>
+  </svg>
+</button>
+
+<!-- Quick View Modal for Chat Issue & PIM Deep Linking -->
+<!-- Personal AI Model Edit / Add Modal (BYOK Modal) -->
+<div id="chatModelEditModal" class="chat-quick-modal-backdrop" hidden>
+  <div class="chat-quick-modal-card" style="max-width: 440px;">
+    <div class="chat-quick-modal-header">
+      <div class="chat-quick-modal-title-wrap">
+        <span class="chat-quick-modal-badge" id="chatModelModalBadge">BYOK</span>
+        <h3 class="chat-quick-modal-title" id="chatModelModalTitle" data-i18n="chat.byok_title_add">개인 AI 모델 / 키 추가</h3>
+      </div>
+      <button type="button" class="chat-quick-modal-close" id="btnChatModelModalClose" aria-label="닫기">✕</button>
+    </div>
+    <form id="chatModelModalForm" class="chat-quick-modal-body" style="display:flex; flex-direction:column; gap:12px; padding:18px 20px;">
+      <input type="hidden" id="inputChatModelEditId" value="">
+      
+      <div>
+        <label for="inputChatModelName" style="display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:4px;" data-i18n="chat.byok_name_label">표시 이름 (Display Name)</label>
+        <input type="text" id="inputChatModelName" class="settings-input" placeholder="예: Claude Sonnet 4.6 (Thinking)" data-i18n-ph="chat.byok_name_ph" required style="width:100%;">
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div>
+          <label for="selectChatModelProvider" style="display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:4px;" data-i18n="chat.byok_provider_label">제공자</label>
+          <select id="selectChatModelProvider" class="settings-select" style="width:100%;">
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI ChatGPT</option>
+            <option value="claude">Anthropic Claude</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="groq">Groq</option>
+            <option value="ollama">Ollama (Local)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div>
+          <label for="inputChatModelId" style="display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:4px;" data-i18n="chat.byok_model_label">모델 ID</label>
+          <input type="text" id="inputChatModelId" class="settings-input" placeholder="gemini-2.5-flash / gpt-4o" autocomplete="off" data-lpignore="true" data-form-type="other" required style="width:100%;">
+        </div>
+      </div>
+
+      <div>
+        <label for="inputChatModelKey" style="display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:4px;" data-i18n="chat.byok_key_label">개인 API 키</label>
+        <div style="position:relative; display:flex; align-items:center;">
+          <input type="password" id="inputChatModelKey" class="settings-input" placeholder="API 키를 여기에 붙여넣으세요..." data-i18n-ph="chat.byok_key_ph" autocomplete="new-password" data-lpignore="true" data-form-type="other" style="width:100%; padding-right:38px;">
+          <button type="button" id="btnToggleChatModelKey" style="position:absolute; right:8px; background:none; border:none; cursor:pointer; padding:4px; display:inline-flex; align-items:center; justify-content:center; color:var(--ink-soft); transition:color 0.15s ease;" title="키 보기/숨기기">
+            <svg class="eye-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg class="eye-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+          </button>
+        </div>
+        <p style="font-size:11px; color:var(--ink-faint); margin:4px 0 0 0;" data-i18n="chat.byok_key_hint">키는 브라우저 로컬에 안전하게 저장됩니다.</p>
+      </div>
+
+      <div>
+        <label for="inputChatModelBaseUrl" style="display:block; font-size:12px; font-weight:700; color:var(--ink); margin-bottom:4px;"><span data-i18n="chat.byok_base_url_label">커스텀 Base URL</span> <span style="font-weight:400; color:var(--ink-faint);" data-i18n="chat.byok_base_url_opt">(선택사항)</span></label>
+        <input type="text" id="inputChatModelBaseUrl" class="settings-input" placeholder="예: http://localhost:11434/v1 또는 비워둠" data-i18n-ph="chat.byok_base_url_ph" style="width:100%;">
+      </div>
+
+      <div id="chatModelTestResult" style="display:none; font-size:12px; padding:8px 10px; border-radius:6px;"></div>
+
+      <div class="chat-model-modal-footer" style="padding:14px 0 0 0; border-top:1px solid var(--line); margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" id="btnDeleteChatModel" class="btn-sched-delete" style="display:none; padding:7px 14px; font-size:12.5px;" data-i18n="chat.byok_btn_delete">모델 삭제</button>
+        <div style="flex:1;"></div>
+        <button type="button" id="btnCancelChatModel" class="btn-secondary" style="padding:7px 16px; font-size:13px; border-radius:6px; cursor:pointer;" data-i18n="chat.byok_btn_cancel">취소</button>
+        <button type="submit" id="btnSaveChatModel" class="btn-primary" style="padding:7px 20px; font-size:13px; font-weight:600; border-radius:6px; background:var(--accent-2); color:#fff; border:none; cursor:pointer; margin-left:8px;" data-i18n="chat.byok_btn_save">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="chatQuickModal" class="chat-quick-modal-backdrop" hidden>
+  <div class="chat-quick-modal-card">
+    <div class="chat-quick-modal-header">
+      <div class="chat-quick-modal-title-wrap">
+        <span class="chat-quick-modal-badge" id="chatQuickModalBadge"></span>
+        <h3 class="chat-quick-modal-title" id="chatQuickModalTitle"></h3>
+      </div>
+      <button type="button" class="chat-quick-modal-close" id="chatQuickModalClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="chat-quick-modal-body" id="chatQuickModalBody">
+      <!-- Dynamic Content -->
+    </div>
+    <div class="chat-quick-modal-footer">
+      <button type="button" class="chat-quick-modal-action-btn" id="chatQuickModalActionBtn">해당 탭으로 이동 ↗</button>
+      <button type="button" class="chat-quick-modal-secondary-btn" id="chatQuickModalDismissBtn">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product Detail Modal (Full Specs & PDF download - Global Overlay) -->
+<div class="pim-modal-backdrop" id="pimDetailModal" hidden>
+  <div class="pim-modal-card">
+    <div class="pim-modal-header">
+      <div class="pim-modal-title-wrap">
+        <span class="pim-modal-badge" id="pimModalCatBadge">카메라</span>
+        <h2 class="pim-modal-model" id="pimModalModel">모델명</h2>
+        <span class="pim-modal-proc" id="pimModalProcBadge" hidden></span>
+      </div>
+      <button type="button" class="pim-modal-close" id="pimModalCloseBtn" aria-label="닫기">✕</button>
+    </div>
+    <div class="pim-modal-body" id="pimModalBody">
+      <!-- Dynamic Content -->
+    </div>
+    <div class="pim-modal-footer">
+      <a href="#" target="_blank" class="btn-primary" id="pimModalPdfBtn" hidden>📄 카달로그 PDF 다운로드</a>
+      <a href="#" target="_blank" class="btn-secondary" id="pimModalWebLink" hidden>🌐 공식 원본 페이지 ↗</a>
+      <button type="button" class="btn-primary" id="pimModalEditBtn">✏️ 제품 수정</button>
+      <button type="button" class="btn-secondary" id="pimModalDismissBtn">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Add User Modal -->
+<div class="dept-modal-backdrop" id="adminAddUserModalBackdrop" hidden>
+  <div class="dept-modal-card" style="max-width: 480px;" role="dialog" aria-modal="true">
+    <div class="dept-modal-header">
+      <div class="dept-modal-title-wrap">
+        <span class="dept-modal-icon">👤</span>
+        <h3 class="dept-modal-title">신규 사내 사용자 등록</h3>
+      </div>
+      <button type="button" class="dept-modal-close" id="adminAddUserModalCloseBtn">✕</button>
+    </div>
+    <form id="adminAddUserForm" class="dept-modal-form">
+      <div class="dept-modal-body">
+        <div class="dept-modal-field">
+          <label for="adminAddUsername">ArgosWorks ID <span class="req">*</span></label>
+          <input type="text" id="adminAddUsername" placeholder="예: user01 또는 hong.gd" required autocomplete="off">
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminAddName">성명 (Name) <span class="req">*</span></label>
+          <input type="text" id="adminAddName" placeholder="예: 홍길동" required autocomplete="off">
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminAddDept">워크스페이스 (소속 / 프로젝트) <span class="req">*</span></label>
+          <select id="adminAddDept" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);">
+          </select>
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminAddEmail">이메일 주소</label>
+          <input type="email" id="adminAddEmail" placeholder="user@company.com" autocomplete="off">
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminAddRole">역할 등급 (Role) <span class="req">*</span></label>
+          <select id="adminAddRole" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);">
+            <option value="member" selected>👤 Member (일반 팀원 — 본인 부서 업무 등록/수정)</option>
+            <option value="manager">💼 Manager (부서장/PM — 본인 부서 전체 통제 및 승인)</option>
+            <option value="admin">🛡️ Admin (최고 관리자 — 전사 전체 통제 및 시스템 설정)</option>
+            <option value="viewer">👁️ Viewer (조회 전용 — 읽기 전용, 수정/등록 불가)</option>
+          </select>
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminAddPassword">초기 비밀번호 <span class="req">*</span></label>
+          <input type="password" id="adminAddPassword" placeholder="최소 8자 이상" required autocomplete="new-password">
+        </div>
+      </div>
+      <div class="dept-modal-footer">
+        <button type="button" class="btn-cancel" id="adminAddUserModalCancelBtn">취소</button>
+        <button type="submit" class="btn-submit" id="adminAddUserModalSubmitBtn">사용자 등록</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Admin Edit User Modal -->
+<div class="dept-modal-backdrop" id="adminEditUserModalBackdrop" hidden>
+  <div class="dept-modal-card" style="max-width: 480px;" role="dialog" aria-modal="true">
+    <div class="dept-modal-header">
+      <div class="dept-modal-title-wrap">
+        <span class="dept-modal-icon">✏️</span>
+        <h3 class="dept-modal-title">사용자 정보 및 권한 수정</h3>
+      </div>
+      <button type="button" class="dept-modal-close" id="adminEditUserModalCloseBtn">✕</button>
+    </div>
+    <form id="adminEditUserForm" class="dept-modal-form">
+      <input type="hidden" id="adminEditUserId">
+      <div class="dept-modal-body">
+        <div class="dept-modal-field">
+          <label>사용자 ID</label>
+          <input type="text" id="adminEditUsername" readonly style="background: var(--code-bg); opacity: 0.85;">
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminEditName">성명 (Name) <span class="req">*</span></label>
+          <input type="text" id="adminEditName" required autocomplete="off">
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminEditDept">워크스페이스 (소속 / 프로젝트) <span class="req">*</span></label>
+          <select id="adminEditDept" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);">
+          </select>
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminEditEmail">이메일 주소</label>
+          <input type="email" id="adminEditEmail" autocomplete="off">
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminEditRole">역할 등급 (Role) <span class="req">*</span></label>
+          <select id="adminEditRole" required style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);">
+            <option value="member">👤 Member (일반 팀원)</option>
+            <option value="manager">💼 Manager (부서장/PM)</option>
+            <option value="admin">🛡️ Admin (최고 관리자)</option>
+            <option value="viewer">👁️ Viewer (조회 전용)</option>
+          </select>
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminEditDisabled">계정 상태 <span class="req">*</span></label>
+          <select id="adminEditDisabled" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);">
+            <option value="0">🟢 정상 활성화 (Active)</option>
+            <option value="1">🔴 로그인 잠금 / 비활성화 (Locked)</option>
+          </select>
+        </div>
+        <div class="dept-modal-field">
+          <label for="adminEditNewPassword">비밀번호 변경 (재설정 시에만 입력)</label>
+          <input type="password" id="adminEditNewPassword" placeholder="변경하지 않을 경우 공란으로 둡니다 (최소 8자)" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="dept-modal-footer">
+        <button type="button" class="btn-cancel" id="adminEditUserModalCancelBtn">취소</button>
+        <button type="submit" class="btn-submit" id="adminEditUserModalSubmitBtn">저장하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Category Create Modal (Popup) -->
+<div class="dept-modal-backdrop" id="deptModalBackdrop" hidden>
+  <div class="dept-modal-card" role="dialog" aria-modal="true" aria-labelledby="deptModalTitle">
+    <div class="dept-modal-header">
+      <div class="dept-modal-title-wrap">
+        <span class="dept-modal-icon">📁</span>
+        <h3 class="dept-modal-title" id="deptModalTitle" data-i18n="dept.add_title">새 업무 카테고리 추가</h3>
+      </div>
+      <button type="button" class="dept-modal-close" id="deptModalCloseBtn" data-i18n-title="common.close" aria-label="닫기">✕</button>
+    </div>
+    <form id="deptAddFormModal" class="dept-modal-form">
+      <input type="hidden" id="deptAddId" value="">
+      <div class="dept-modal-body">
+        <div class="dept-modal-field">
+          <label for="deptAddName"><span data-i18n="dept.name_label">업무 카테고리명</span> <span class="req">*</span></label>
+          <input type="text" id="deptAddName" data-i18n-ph="dept.name_ph" placeholder="예: 개발팀 또는 영상 분석 프로젝트" required maxlength="30" autocomplete="off">
+          <span class="dept-modal-hint" data-i18n="dept.name_hint">대시보드 카드 및 필터에 표시될 카테고리 명칭입니다.</span>
+        </div>
+        <div class="dept-modal-field">
+          <label for="deptAddLocalPrefix" data-i18n="dept.local_label">로컬 카드 코드 (Local Prefix)</label>
+          <input type="text" id="deptAddLocalPrefix" data-i18n-ph="dept.local_ph" placeholder="예: DEV (카드 코드: DEV-1, DEV-2...)" maxlength="12" autocomplete="off">
+          <span class="dept-modal-hint" data-i18n="dept.local_hint">로컬 저장 시 자동 채번될 카드 코드 접두사입니다.</span>
+        </div>
+        <div class="dept-modal-field" id="deptAddJiraKeyField">
+          <label for="deptAddJiraKey" data-i18n="dept.jira_label">Jira 연동 코드 (Project Key)</label>
+          <input type="text" id="deptAddJiraKey" data-i18n-ph="dept.jira_ph" placeholder="예: ARGOS (Jira 프로젝트 키)" maxlength="15" autocomplete="off">
+          <span class="dept-modal-hint" data-i18n="dept.jira_hint">Jira 이슈와 자동 동기화할 프로젝트 키입니다.</span>
+        </div>
+        <div class="dept-modal-field">
+          <label for="deptAddCustomCategories"><span>사내 고유 업무 유형 (선택, 쉼표 구분)</span></label>
+          <input type="text" id="deptAddCustomCategories" placeholder="예: 회의, 업무인수인계, 내부검토, 일일보고" autocomplete="off">
+          <span class="dept-modal-hint">사내에서 자유롭게 사용할 세부 업무 유형들을 쉼표(,)로 구분해 등록합니다. (선택 사항)</span>
+        </div>
+      </div>
+      <div class="dept-modal-footer">
+        <button type="button" class="dept-modal-btn cancel" id="deptModalCancelBtn" data-i18n="dept.modal_cancel">취소</button>
+        <button type="submit" class="dept-modal-btn confirm" id="deptModalSubmitBtn" data-i18n="dept.modal_submit">추가</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Product Category & Spec Template Modal (Popup) -->
+<div class="dept-modal-backdrop" id="modalProductCategory" hidden>
+  <div class="dept-modal-card" style="max-width: 600px;" role="dialog" aria-modal="true" aria-labelledby="productCatModalTitle">
+    <div class="dept-modal-header">
+      <div class="dept-modal-title-wrap">
+        <span class="dept-modal-icon">📦</span>
+        <h3 class="dept-modal-title" id="productCatModalTitle">제품 카테고리 및 규격 설정</h3>
+      </div>
+      <button type="button" class="dept-modal-close" id="btnProductCatModalClose" aria-label="닫기">✕</button>
+    </div>
+    <form id="formProductCategory" class="dept-modal-form" style="padding: 16px 20px 20px;">
+      <input type="hidden" id="productCatEditId" value="">
+      
+      <div class="field" style="margin-bottom: 16px;">
+        <label for="productCatNameInput" style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">
+          제품 카테고리명 <span class="req" style="color: #ef4444;">*</span>
+        </label>
+        <input type="text" id="productCatNameInput" class="settings-input" placeholder="예: IP 카메라, AI 서버, IoT 센서, 클라우드 SW" required style="width: 100%;">
+      </div>
+
+      <div class="field" style="margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 13px; font-weight: 600; margin: 0;">
+            제품별 규격 입력 항목 (Custom Spec Fields)
+          </label>
+          <button type="button" class="btn-secondary" id="btnAddSpecFieldRow" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">
+            + 항목 추가
+          </button>
+        </div>
+        <p style="font-size: 11.5px; color: var(--ink-faint, #64748b); margin-bottom: 10px;">
+          이 카테고리의 제품 등록 시 입력받을 규격(해상도, 전원, 라이선스, 배터리 등)을 정의합니다.
+        </p>
+
+        <!-- Dynamic Spec Fields Table -->
+        <div style="border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: var(--bg-hover, rgba(0,0,0,0.03)); border-bottom: 1px solid var(--border-color, #e2e8f0);">
+                <th style="padding: 6px 10px; text-align: left; width: 120px;">그룹 (Group)</th>
+                <th style="padding: 6px 10px; text-align: left;">항목명 (Label)</th>
+                <th style="padding: 6px 10px; text-align: left; width: 120px;">변수키 (Key)</th>
+                <th style="padding: 6px 10px; text-align: center; width: 50px;">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="specFieldsRowsBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="productCatModalError" class="form-error" style="margin-bottom: 12px; display: none;"></div>
+
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;">
+        <button type="button" class="btn-secondary" id="btnProductCatModalCancel" style="padding: 7px 16px; font-size: 13px;">취소</button>
+        <button type="submit" class="btn-primary" id="btnProductCatModalSubmit" style="padding: 7px 20px; font-size: 13px;">저장하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Backdrop for Overlay/Modal Canvas Mode -->
+<div id="canvasBackdrop" class="canvas-backdrop" hidden></div>
+
+<!-- Canvas Panel for Issue Details (Choivis Style - Global) -->
+<aside id="canvasPanel" class="canvas-panel" hidden>
+  <div class="canvas-resize-handle" id="canvasResizeHandle" title="드래그하여 크기 조절 / 더블클릭시 기본값"></div>
+  <!-- Canvas Drag & Drop Overlay -->
+  <div id="canvasDragOverlay" class="canvas-drag-overlay" hidden>
+    <div class="canvas-drag-overlay-box">
+      <div style="font-size:36px; margin-bottom:8px;">📥</div>
+      <div id="canvasDragCardKey" style="font-size:14px; font-weight:700; color:var(--vs-cyan, #38bdf8); margin-bottom:4px;">📁 파일 첨부</div>
+      <div style="font-size:13px; font-weight:600; color:#f8fafc;">파일을 여기에 놓으면 업무 카드에 즉시 업로드됩니다</div>
+      <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">(최대 25MB · 여러 파일 동시 드롭 가능)</div>
+    </div>
+  </div>
+  <div class="canvas-header">
+    <div style="display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;">
+      <span id="canvasTitleText" style="font-weight:700; color:var(--accent-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📁 업무 상세 정보</span>
+    </div>
+    <div class="canvas-header-actions">
+      <button type="button" class="canvas-header-edit-btn" id="btnCanvasEditTask" title="업무 수정 (담당자, 참여자, 제목, 내용, 마감일)">✏️ 수정</button>
+      <button type="button" class="canvas-mode-btn" id="btnCanvasModeDocked" title="화면 분할 고정 (Docked)">📌</button>
+      <button type="button" class="canvas-mode-btn active" id="btnCanvasModeOverlay" title="슬라이드 오버레이 (Overlay)">🗂️</button>
+      <button type="button" class="canvas-mode-btn" id="btnCanvasModeModal" title="중앙 모달 (Center Modal)">⛶</button>
+      <span class="canvas-close-btn" id="btnCanvasClose" title="닫기 (Esc)">✕</span>
+    </div>
+  </div>
+  <div id="canvasContent" class="canvas-body"></div>
+</aside>
+
+<!-- Attachment Preview Modal (Choivis Style: Image / PDF / Text) -->
+<div id="attachment-preview-modal" class="attachment-preview-modal-backdrop" hidden>
+  <div class="attachment-preview-modal-card">
+    <div class="attachment-preview-modal-header">
+      <div style="display:flex; align-items:center; gap:8px; min-width:0; overflow:hidden;">
+        <span id="preview-modal-icon" style="font-size:18px;">📄</span>
+        <span id="preview-modal-filename" style="font-weight:700; color:var(--ink); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">파일명</span>
+        <span id="preview-modal-size" style="font-size:11.5px; color:var(--ink-faint); margin-left:4px;">(0 KB)</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+        <a id="preview-modal-download-btn" href="#" download class="preview-header-btn" title="다운로드" style="display:inline-flex; align-items:center; gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>다운로드</span>
+        </a>
+        <button type="button" class="preview-header-close-btn" onclick="window.closeAttachmentPreview()" title="닫기 (Esc)">✕</button>
+      </div>
+    </div>
+    <div id="preview-modal-body" class="attachment-preview-modal-body"></div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal (내 정보 수정 팝업) -->
+<div id="modalEditProfile" class="pim-modal-backdrop" hidden>
+  <div class="pim-modal-card" style="max-width: 440px;">
+    <div class="pim-modal-header">
+      <div class="pim-modal-title-wrap">
+        <h2 class="pim-modal-model" style="font-size: 16px;">내 정보 수정</h2>
+      </div>
+      <button type="button" class="pim-modal-close" id="btnEditProfileClose" aria-label="닫기">✕</button>
+    </div>
+    <form id="formEditProfile" style="padding: 16px 20px 20px;">
+      <!-- Avatar Section -->
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border-light);">
+        <div id="editProfileAvatarPreview" style="width: 56px; height: 56px; border-radius: 50%; background: #0284c7; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; overflow: hidden; flex-shrink: 0; border: 2px solid var(--border-light);">
+          ?
+        </div>
+        <div style="flex: 1;">
+          <div style="font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">프로필 사진 (Avatar)</div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <label class="btn-secondary" style="padding: 5px 12px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; margin: 0;">
+              <span>사진 변경</span>
+              <input type="file" id="editProfileAvatarFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;">
+            </label>
+            <button type="button" class="btn-secondary" id="btnEditProfileAvatarReset" style="padding: 5px 12px; font-size: 12px; display: none;">기본값으로 복원</button>
+          </div>
+          <div style="font-size: 11px; color: var(--ink-faint); margin-top: 4px;">JPG, PNG, WebP (권장 1:1 비율, 최대 5MB)</div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom: 14px;">
+        <label for="editProfileNameInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">이름 (성명)</label>
+        <input type="text" id="editProfileNameInput" class="settings-input" required placeholder="이름 입력">
+      </div>
+      <div class="field" style="margin-bottom: 14px;">
+        <label for="editProfileEmailInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">이메일 <span class="optional" style="font-weight: 400; color: var(--ink-faint);">(선택)</span></label>
+        <input type="email" id="editProfileEmailInput" class="settings-input" placeholder="user@company.com">
+      </div>
+      <div class="field" style="margin-bottom: 14px;">
+        <label for="editProfileOrgSelect" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">업무 카테고리 (소속 / 프로젝트)</label>
+        <select id="editProfileOrgSelect" class="settings-select" style="width: 100%;"></select>
+      </div>
+      <div class="field" style="margin-bottom: 16px;">
+        <label for="editProfilePasswordInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">새 비밀번호 <span class="optional" style="font-weight: 400; color: var(--ink-faint);">(변경 시에만 입력)</span></label>
+        <input type="password" id="editProfilePasswordInput" class="settings-input" placeholder="4자 이상 (비워두면 기존 유지)" autocomplete="new-password">
+      </div>
+      <div id="editProfileError" class="form-error" style="margin-bottom: 12px;"></div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
+        <button type="button" class="btn-secondary" id="btnEditProfileCancel" style="padding: 8px 16px; font-size: 13px;">취소</button>
+        <button type="submit" class="btn-primary" id="btnEditProfileSubmit" style="padding: 8px 18px; font-size: 13px;">저장하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Record / Task Edit Modal (Comprehensive: Title, Assignee, Participants, Dates, Memo) -->
+<div id="recordEditModal" class="pim-modal-backdrop" hidden>
+  <div class="pim-modal-card" style="max-width: 620px; width: 92%; max-height: 90vh; display: flex; flex-direction: column;">
+    <div class="pim-modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
+      <div class="pim-modal-title-wrap" style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 18px;">✏️</span>
+        <h2 class="pim-modal-model" style="font-size: 16px; margin: 0; font-weight: 700; color: var(--ink);">업무 정보 수정</h2>
+        <span id="recordEditCardCodeBadge" class="notif-item-tag tag-info" style="font-size: 11.5px; padding: 2px 7px;"></span>
+      </div>
+      <button type="button" class="pim-modal-close" id="btnRecordEditClose" aria-label="닫기">✕</button>
+    </div>
+    <form id="formRecordEdit" style="padding: 20px; overflow-y: auto; flex: 1;">
+      <input type="hidden" id="recordEditKey">
+
+      <!-- Title -->
+      <div class="field" style="margin-bottom: 14px;">
+        <label for="recordEditTitleInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">제목 <span style="color: var(--danger, #ef4444);">*</span></label>
+        <input type="text" id="recordEditTitleInput" class="settings-input" style="width: 100%; font-size: 13.5px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);" required placeholder="업무 제목 입력">
+      </div>
+
+      <!-- 2-column: Assignee & Participants -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="field">
+          <label for="recordEditAssigneeSelect" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">담당자</label>
+          <select id="recordEditAssigneeSelect" class="settings-select" style="width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);"></select>
+        </div>
+        <div class="field">
+          <label for="recordEditParticipantsInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">참여자</label>
+          <input type="text" id="recordEditParticipantsInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);" placeholder="예: 홍길동, 김철수 (쉼표 구분)">
+        </div>
+      </div>
+
+      <!-- 2-column: Start Date & Due Date -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="field">
+          <label for="recordEditStartDateInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">시작일</label>
+          <input type="date" id="recordEditStartDateInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);">
+        </div>
+        <div class="field">
+          <label for="recordEditDueDateInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">마감일</label>
+          <input type="date" id="recordEditDueDateInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);">
+        </div>
+      </div>
+
+      <!-- Description / Memo -->
+      <div class="field" style="margin-bottom: 14px;">
+        <label for="recordEditMemoInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">상세 내용 / 메모</label>
+        <textarea id="recordEditMemoInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); line-height: 1.5; resize: vertical;" rows="5" placeholder="업무 상세 설명 또는 진행 메모"></textarea>
+      </div>
+
+      <div id="recordEditError" class="form-error" style="margin-bottom: 12px; color: #ef4444; font-size: 12.5px;" hidden></div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);">
+        <button type="button" class="btn-secondary" id="btnRecordEditCancel" style="padding: 8px 18px; font-size: 13px; border-radius: 6px;">취소</button>
+        <button type="submit" class="btn-primary" id="btnRecordEditSubmit" style="padding: 8px 22px; font-size: 13px; font-weight: 600; border-radius: 6px; background: var(--accent-2); color: #ffffff; border: none; cursor: pointer;">저장하기</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script src="js/utils.js?v=4.3"></script>
+<script src="js/i18n.js?v=1.5"></script>
+<script src="js/api.js?v=5.1"></script>
+<script src="js/auth.js?v=5.0"></script>
+<script src="js/dashboard.js?v=8.2"></script>
+<script src="js/jira-form.js?v=6.2"></script>
+<script src="js/calendar.js?v=8.1"></script>
+<script src="js/home.js?v=5.6"></script>
+<script src="js/pim.js?v=5.2"></script>
+<script src="js/history.js?v=1.5"></script>
+<script src="js/settings.js?v=5.3"></script>
+<script src="js/settings-analytics.js?v=1.2"></script>
+<script src="js/chat.js?v=3.3"></script>
+<script src="js/canvas.js?v=6.7"></script>
+<script src="js/notifications.js?v=2.1"></script>
+<script src="js/app.js?v=6.7"></script>
+
+</body>
+</html>

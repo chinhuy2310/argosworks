@@ -1,0 +1,149 @@
+/* ---------- Toast ---------- */
+#toast{
+  position: fixed; bottom: 24px; right: 24px; z-index: 99999;
+  background: var(--ink, #1e293b); color: var(--bg, #f8fafc); padding: 12px 18px; border-radius: 8px;
+  font-size: 13.5px; box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s, background 0.15s;
+  pointer-events: none; max-width: 420px; line-height: 1.4;
+}
+#toast.show{ opacity: 1; transform: translateY(0); }
+#toast.toast-error{
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border: 1px solid #ef4444 !important;
+  box-shadow: 0 8px 28px rgba(220, 38, 38, 0.45) !important;
+  font-weight: 600 !important;
+}
+
+[hidden]{ display: none !important; }
+
+/* === FLOATING SCROLL TO TOP BUTTON === */
+.btn-floating-scroll-top {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--vs-cyan-ghost, rgba(2, 132, 199, 0.12));
+  color: var(--accent-2, #0284c7);
+  border: 1.5px solid var(--accent-2, #0284c7);
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.3), 0 4px 14px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 990;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px) scale(0.9);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s, background 0.18s, color 0.18s, border-color 0.18s;
+  user-select: none;
+  padding: 0;
+}
+
+/* Hiệu ứng hào quang nhịp thở chậm (Slow Breathing Aura) */
+.btn-floating-scroll-top.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  animation: scroll-top-aura 2.6s infinite ease-in-out;
+}
+
+/* Vòng sóng ánh sáng nhấp nháy chậm tỏa ra bên ngoài (Pulsing Outer Glow Ring) */
+.btn-floating-scroll-top.visible::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-2, #2c6e63);
+  pointer-events: none;
+  animation: scroll-top-ripple 2.6s cubic-bezier(0.2, 0.8, 0.3, 1) infinite;
+}
+
+@keyframes scroll-top-ripple {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.85;
+  }
+  55% {
+    transform: scale(1.36);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.36);
+    opacity: 0;
+  }
+}
+
+@keyframes scroll-top-aura {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(2, 132, 199, 0.3), 0 4px 14px rgba(0, 0, 0, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(2, 132, 199, 0.65), 0 6px 20px rgba(2, 132, 199, 0.35);
+  }
+}
+
+.btn-floating-scroll-top:hover {
+  background: var(--accent-2, #0284c7);
+  color: #ffffff;
+  border-color: var(--accent-2, #0284c7);
+  box-shadow: 0 0 24px rgba(2, 132, 199, 0.7), 0 8px 24px rgba(2, 132, 199, 0.4);
+  transform: translateY(-2px) scale(1.1);
+}
+
+.btn-floating-scroll-top:active {
+  transform: translateY(1px) scale(0.96);
+}
+
+/* Dark Theme - Explicit Theme Attribute */
+[data-theme='dark'] .btn-floating-scroll-top {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4), 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+[data-theme='dark'] .btn-floating-scroll-top.visible {
+  animation: scroll-top-aura-dark 2.6s infinite ease-in-out;
+}
+[data-theme='dark'] .btn-floating-scroll-top.visible::before {
+  border-color: #38bdf8;
+}
+[data-theme='dark'] .btn-floating-scroll-top:hover {
+  background: #38bdf8;
+  color: #0f172a;
+  border-color: #38bdf8;
+  box-shadow: 0 0 26px rgba(56, 189, 248, 0.85), 0 8px 26px rgba(56, 189, 248, 0.5);
+}
+
+/* Dark Theme - System Fallback */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .btn-floating-scroll-top {
+    background: rgba(56, 189, 248, 0.18);
+    border-color: #38bdf8;
+    color: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4), 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  :root:not([data-theme="light"]) .btn-floating-scroll-top.visible {
+    animation: scroll-top-aura-dark 2.6s infinite ease-in-out;
+  }
+  :root:not([data-theme="light"]) .btn-floating-scroll-top.visible::before {
+    border-color: #38bdf8;
+  }
+  :root:not([data-theme="light"]) .btn-floating-scroll-top:hover {
+    background: #38bdf8;
+    color: #0f172a;
+    border-color: #38bdf8;
+    box-shadow: 0 0 26px rgba(56, 189, 248, 0.85), 0 8px 26px rgba(56, 189, 248, 0.5);
+  }
+}
+
+@keyframes scroll-top-aura-dark {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.35), 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.75), 0 6px 22px rgba(56, 189, 248, 0.4);
+  }
+}

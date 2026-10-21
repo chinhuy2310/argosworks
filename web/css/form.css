@@ -1,0 +1,330 @@
+/* ---------- Submit form ---------- */
+.form-grid{
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 860px){
+  .form-grid{
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}
+
+.dropzone{
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.dropzone:hover{
+  border-color: var(--accent-2);
+  background: var(--accent-2-soft);
+}
+.dropzone svg{
+  color: var(--accent-2);
+  margin-bottom: 6px;
+}
+.dropzone .dz-title{
+  font-weight: 600;
+  font-size: 13.5px;
+  margin-bottom: 2px;
+  color: var(--ink);
+}
+.dropzone .dz-sub{
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+#fileInput{ display: none; }
+#fileList{ margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+#fileList .file-chip{
+  display: flex; justify-content: space-between; gap: 10px;
+  background: var(--code-bg); border-radius: 5px; padding: 6px 10px; font-size: 12.5px;
+}
+
+.hint-box{
+  margin-top: 16px; border-left: 3px solid var(--accent-2); background: var(--accent-2-soft);
+  padding: 12px 14px; border-radius: 4px; font-size: 12.5px; color: var(--ink);
+}
+
+.field{ margin-bottom: 16px; }
+.field label{ display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.field-row .field label{ min-height: 24px; display: flex; align-items: flex-end; line-height: 1.3; }
+.field .optional{ font-weight: 400; color: var(--ink-faint); margin-left: 4px; }
+.field input[type="text"], .field input[type="date"], .field input[type="number"], .field select, .field textarea{
+  width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 5px;
+  padding: 9px 12px; font-size: 13.5px;
+}
+.field input[type="date"]{ cursor: pointer; }
+.field input[type="date"]::-webkit-calendar-picker-indicator{ cursor: pointer; padding: 4px; }
+
+/* Custom Date Picker Overlay (Forces Year-Month-Day YYYY.MM.DD) */
+.custom-date-picker-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.custom-date-native {
+  width: 100% !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.custom-date-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 5px;
+  padding: 9px 12px;
+  font-size: 13.5px;
+  pointer-events: none;
+  min-height: 38px;
+  transition: all 0.15s ease;
+}
+
+.custom-date-picker-wrap:focus-within .custom-date-overlay {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px var(--accent-2-soft);
+}
+
+.custom-date-text {
+  font-weight: 500;
+  color: var(--ink);
+  font-family: inherit;
+}
+
+.custom-date-text.placeholder {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.custom-date-cal-icon {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.field textarea{ resize: vertical; min-height: 120px; line-height: 1.5; }
+.field-row{ display: flex; gap: 14px; align-items: flex-start; }
+.field-row > *{ flex: 1; min-width: 0; }
+.checkbox-field{ display: flex; align-items: center; gap: 8px; margin-top: 4px; margin-bottom: 12px; }
+.checkbox-field input{ width: 16px; height: 16px; cursor: pointer; }
+.submitter-note{ font-size: 12px; color: var(--ink-faint); margin-top: -10px; margin-bottom: 16px; }
+
+.submit-row{ display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.submit-row .btn-primary,
+#submitBtn{
+  width: 100% !important;
+  padding: 11px 22px;
+  font-size: 14.5px;
+}
+.btn-primary{
+  background: var(--accent-2, #0066cc); color: #fff; border: none; border-radius: 6px;
+  padding: 9px 18px; font-weight: 600; font-size: 13.5px; cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex; align-items: center; justify-content: center;
+  white-space: nowrap;
+}
+.btn-primary:hover{ filter: brightness(1.08); }
+.btn-primary:active{ transform: scale(0.99); }
+.btn-primary:disabled{ opacity: 0.6; cursor: default; }
+.processing-status{ font-size: 13px; color: var(--ink-soft); display: none; align-items: center; justify-content: center; gap: 7px; margin-top: 4px; }
+.processing-status.show{ display: flex; }
+.dot{ width: 7px; height: 7px; border-radius: 50%; background: var(--accent-2); animation: pulse 1s infinite ease-in-out; }
+@media (prefers-reduced-motion: reduce){ .dot{ animation: none; } }
+@keyframes pulse{ 0%,100%{ opacity: 0.3; } 50%{ opacity: 1; } }
+
+.form-error{ color: var(--stat-critical); font-size: 12.5px; margin-top: -10px; margin-bottom: 14px; display: none; }
+.form-error.show{ display: block; }
+
+/* ---------- TomSelect Searchable Dropdown ---------- */
+.ts-wrapper { width: 100%; font-family: inherit; }
+.ts-control {
+  border: 1px solid var(--line) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border-radius: 5px !important;
+  padding: 0 12px !important;
+  font-size: 13.5px !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.ts-wrapper.single .ts-control {
+  min-height: 38px !important;
+  height: 38px !important;
+  overflow: hidden !important;
+}
+.ts-wrapper.multi .ts-control {
+  min-height: 38px !important;
+  height: auto !important;
+  flex-wrap: wrap !important;
+  padding: 4px 8px !important;
+  gap: 4px !important;
+}
+.ts-wrapper.multi .ts-control .item {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: var(--code-bg, #f1f5f9) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink) !important;
+  border-radius: 4px !important;
+  padding: 2px 8px !important;
+  font-size: 12.5px !important;
+  margin: 2px !important;
+}
+.ts-wrapper.multi .ts-control .item .remove {
+  border-left: 1px solid var(--line) !important;
+  margin-left: 4px !important;
+  padding-left: 4px !important;
+  color: var(--ink-faint) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+.ts-wrapper.multi .ts-control .item .remove:hover {
+  color: var(--stat-critical, #ef4444) !important;
+}
+.ts-wrapper.focus .ts-control {
+  border-color: var(--accent-2) !important;
+  box-shadow: 0 0 0 2px var(--accent-2-soft) !important;
+}
+.ts-control input {
+  color: var(--ink) !important;
+  font-size: 13.5px !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 32px !important;
+}
+/* When an item is selected in single-select mode, do not wrap input to next line */
+.ts-wrapper.single .ts-control {
+  position: relative;
+}
+.ts-wrapper.single .ts-control .item {
+  color: var(--ink) !important;
+  font-size: 13.5px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.ts-wrapper.single.has-items .ts-control > input {
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  width: 0 !important;
+}
+.ts-wrapper.multi.has-items .ts-control > input::placeholder {
+  color: transparent !important;
+  opacity: 0 !important;
+}
+.ts-wrapper.multi.has-items:not(.focus) .ts-control > input {
+  opacity: 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  pointer-events: none;
+}
+.ts-control .item.tag-none {
+  background: var(--code-bg, #f1f5f9) !important;
+  color: var(--ink-faint, #64748b) !important;
+  border-color: var(--line, #cbd5e1) !important;
+  font-weight: 500 !important;
+}
+.ts-dropdown {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line-strong) !important;
+  border-radius: 6px !important;
+  box-shadow: var(--shadow) !important;
+  font-size: 13px !important;
+  margin-top: 3px !important;
+  z-index: 1000 !important;
+}
+.ts-dropdown .option {
+  padding: 8px 12px !important;
+  color: var(--ink) !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+.ts-dropdown .option:last-child {
+  border-bottom: none !important;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+  background: var(--accent-2-soft) !important;
+  color: var(--accent-2) !important;
+}
+.ts-dropdown .no-results {
+  color: var(--ink-faint) !important;
+  padding: 10px 12px !important;
+}
+[data-theme="dark"] .ts-control input::placeholder {
+  color: var(--ink-faint) !important;
+}
+
+.part-ts-option {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  gap: 8px !important;
+}
+.part-option-name {
+  font-weight: 600 !important;
+  color: var(--ink) !important;
+}
+.part-option-meta {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+.part-option-dept {
+  font-size: 11px !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  background: var(--accent-2-soft, rgba(0, 102, 204, 0.1)) !important;
+  color: var(--accent-2, #0066cc) !important;
+  font-weight: 500 !important;
+}
+.part-option-email {
+  font-size: 11px !important;
+  color: var(--ink-faint, #888) !important;
+}
+
+/* Participants Select: Dropdown opens UPWARDS for ample vertical space */
+.ts-wrapper.dropdown-up .ts-dropdown,
+#participantsSelect + .ts-wrapper .ts-dropdown,
+#participantsSelect ~ .ts-wrapper .ts-dropdown {
+  top: auto !important;
+  bottom: 100% !important;
+  margin-top: 0 !important;
+  margin-bottom: 6px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.16) !important;
+}
+
+.ts-wrapper.dropdown-up .ts-dropdown .ts-dropdown-content,
+#participantsSelect + .ts-wrapper .ts-dropdown .ts-dropdown-content,
+#participantsSelect ~ .ts-wrapper .ts-dropdown .ts-dropdown-content {
+  max-height: 320px !important;
+  overflow-y: auto !important;
+}
+

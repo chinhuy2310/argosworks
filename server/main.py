@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys
+import threading
+from http.server import ThreadingHTTPServer
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+def _log_unhandled_exception(exc_type, exc_value, exc_traceback):
+    import traceback
+    print("\n[CRITICAL UNHANDLED EXCEPTION]", file=sys.stderr, flush=True)
+    traceback.print_exception(exc_type, exc_value, exc_traceback, file=sys.stderr)
+    sys.stderr.flush()
+
+sys.excepthook = _log_unhandled_exception
+if hasattr(threading, "excepthook"):
+    threading.excepthook = lambda args: _log_unhandled_exception(args.exc_type, args.exc_value, args.exc_traceback)
+
+from config import load_config, ensure_dirs, ensure_seed_files, DATA_DIR
+from db import init_db
+from handler import ArgosHandler, JarvisHandler
+from services.jira_client import sync_jira_cache, jira_auto_sync_loop
+from services.auth import cleanup_expired_sessions
+
+def _session_cleanup_loop():
+    import time
+    while True:
+        try:
+            cleanup_expired_sessions()
+        except Exception:
+            pass
+        time.sleep(3600)  # Clean up expired sessions once every hour
+
+def main():
+    ensure_dirs()
+    ensure_seed_files()
+    init_db()  # SQLite DB 초기화 (테이블 생성 + WAL 모드)
+    threading.Thread(target=_session_cleanup_loop, daemon=True, name="SessionCleanup").start()
+    cfg = load_config()
+    ArgosHandler.cfg = cfg
+    JarvisHandler.cfg = cfg
+
+    import os
+    host = os.environ.get("HOST") or cfg["server"].get("host", "0.0.0.0")
+    port = int(os.environ.get("PORT") or cfg["server"].get("port", 8080))
+
+    jira_state = "사용" if (cfg["jira"].get("enabled") and cfg["jira"].get("api_token")) else "미사용 (config.json 설정 필요)"
+
+    from services.ai_client import get_ai_config
+    ai_info = get_ai_config(cfg)
+    if ai_info["enabled"] and (ai_info["api_key"] or ai_info["provider"] == "ollama"):
+        ai_state = f"사용 ({ai_info['provider'].upper()} - {ai_info['model']})"
+    else:
+        ai_state = "미사용 (규칙 기반 분류로 대체)"
+
+    from services.vector_store import is_voyage_configured, sync_all_vectors, get_vector_stats, get_embedding_provider_info
+    if is_voyage_configured(cfg):
+        v_info = get_embedding_provider_info(cfg)
+        vector_state = f"사용 ({v_info['provider'].upper()} - {v_info['model']}) [vector_store.sqlite]"
+    else:
+        vector_state = "미사용 (키워드 검색 사용)"
+
+    # SSL/TLS 설정 확인 (직접 TLS 바인딩 또는 리버스 프록시)
+    import os
+    import ssl
+    ssl_cert = cfg.get("server", {}).get("ssl_certfile") or os.environ.get("ARGOS_SSL_CERT", "")
+    ssl_key = cfg.get("server", {}).get("ssl_keyfile") or os.environ.get("ARGOS_SSL_KEY", "")
+    is_ssl_configured = bool(ssl_cert and ssl_key and os.path.exists(ssl_cert) and os.path.exists(ssl_key))
+    proto = "https" if is_ssl_configured else "http"
+    ssl_state = f"활성화 (TLS Direct, {os.path.basename(ssl_cert)})" if is_ssl_configured else "HTTP (권장: Nginx/Cloudflare 리버스 프록시 또는 config.json의 ssl_certfile/ssl_keyfile)"
+
+    print("=" * 60)
+    print(" ARGOS WORKS 백엔드 서버")
+    print(" 데이터 폴더 :", DATA_DIR)
+    print(f" 주소        : {proto}://{host}:{port}  (사내망: {proto}://<이 PC의 IP>:{port})")
+    print(" SSL/TLS     :", ssl_state)
+    print(" Jira 연동   :", jira_state)
+    print(" AI 서비스   :", ai_state)
+    print(" 벡터 DB     :", vector_state)
+    print(" CSDL 백업   : 자동 스케줄러 가동 (24시간 주기, 14일 보관)")
+    print(" 종료하려면 이 창에서 Ctrl+C 를 누르세요.")
+    print("=" * 60)
+
+    # CSDL 자동 백업 스케줄러 시작
+    from services.backup_manager import start_backup_scheduler
+    start_backup_scheduler(interval_hours=24)
+
+    if is_voyage_configured(cfg):
+        # 서버 시작 시 백그라운드에서 증분(Incremental) 벡터 동기화 실행
+        threading.Thread(target=sync_all_vectors, args=(cfg,), daemon=True).start()
+
+    if cfg["jira"].get("enabled"):
+        # 서버가 켜지자마자 백그라운드에서 한 번 Jira를 동기화해둔다
+        threading.Thread(target=sync_jira_cache, args=(cfg,), daemon=True).start()
+        threading.Thread(target=jira_auto_sync_loop, args=(cfg,), daemon=True).start()
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    class ArgosThreadingHTTPServer(ThreadingHTTPServer):
+        daemon_threads = True
+        request_queue_size = 512
+        allow_reuse_address = True
+        
+        # Enterprise High-Capacity Thread Pool: 128 dedicated workers
+        # Designed for 8GB+ RAM servers. Gives 100+ concurrent users instant thread allocation
+        # with zero latency, backed by a 512 TCP connection backlog.
+        _pool = ThreadPoolExecutor(max_workers=128, thread_name_prefix="ArgosWorker")
+
+        def server_bind(self):
+            import socket
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # TCP_NODELAY: Disable Nagle's algorithm for sub-millisecond response latency
+            try:
+                self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            except Exception:
+                pass
+            super().server_bind()
+
+        def process_request(self, request, client_address):
+            self._pool.submit(self.process_request_thread, request, client_address)
+
+        def server_close(self):
+            super().server_close()
+            self._pool.shutdown(wait=False)
+
+    httpd = ArgosThreadingHTTPServer((host, port), ArgosHandler)
+    if is_ssl_configured:
+        try:
+            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ctx.load_cert_chain(certfile=ssl_cert, keyfile=ssl_key)
+            httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
+            print("[Security] Native SSL/TLS 소켓이 성공적으로 활성화되었습니다.")
+        except Exception as e:
+            print(f"[Security Warning] SSL/TLS 적용 실패: {e}")
+
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\n서버를 종료합니다.")
+        httpd.shutdown()
+    except Exception as e:
+        print(f"\n서버 예외 발생: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        httpd.shutdown()
+
+if __name__ == "__main__":
+    main()

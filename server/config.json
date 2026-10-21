@@ -1,0 +1,59 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080
+  },
+  "jira": {
+    "enabled": false,
+    "base_url": "https://dongchinhuy.atlassian.net",
+    "email": "dongchinhuy@gmail.com",
+    "api_token": "",
+    "default_project_key": "SCRUM",
+    "default_issue_type": "",
+    "default_subtask_type": "Subtask",
+    "project_map": {}
+  },
+  "ai": {
+    "enabled": true,
+    "provider": "gemini",
+    "api_key": "",
+    "model": "gemini-3.5-flash-lite",
+    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "allow_user_keys": true,
+    "fallback": {
+      "enabled": false,
+      "provider": "openai",
+      "api_key": "",
+      "model": "gpt-4o-mini",
+      "base_url": "https://api.openai.com/v1"
+    }
+  },
+  "anthropic": {
+    "enabled": false,
+    "api_key": "",
+    "model": "claude-sonnet-4-5"
+  },
+  "voyage": {
+    "enabled": true,
+    "provider": "gemini",
+    "api_key": "",
+    "model": "gemini-embedding-001",
+    "base_url": "https://generativelanguage.googleapis.com/v1beta"
+  },
+  "workspace": {
+    "name": "ARGOS WORKS",
+    "title": "업무 인수인계 및 AI 협업 기록 시스템",
+    "welcome_greeting": "ARGOS WORKS에 오신 것을 환영합니다",
+    "welcome_subtitle": "프로젝트 인수인계, 사내 업무 기록 및 실시간 AI 협업 시스템입니다.",
+    "logo_url": "",
+    "footer_text": "ARGOS WORKS System © 2026"
+  },
+  "backup": {
+    "dir": "",
+    "interval_hours": 24,
+    "retention_days": 14,
+    "retention_count": 30
+  },
+  "allow_public_register": false,
+  "max_upload_mb": 25
+}

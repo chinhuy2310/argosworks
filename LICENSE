@@ -1,0 +1,47 @@
+COMMERCIAL PROPRIETARY SOFTWARE LICENSE
+ARGOS WORKS ENTERPRISE EDITION
+
+Copyright (c) 2026 ARGOS WORKS. All rights reserved.
+
+IMPORTANT: PLEASE READ THIS SOFTWARE LICENSE AGREEMENT CAREFULLY BEFORE USING
+OR INSTALLING THE SOFTWARE. BY INSTALLING, COPYING, OR OTHERWISE USING THIS
+SOFTWARE, YOU AGREE TO BE BOUND BY THE TERMS OF THIS AGREEMENT.
+
+1. PROPRIETARY RIGHTS & GRANT OF LICENSE
+This software ("ARGOS WORKS") and all associated documentation are proprietary
+to the Licensor. Subject to the terms of your commercial agreement or enterprise
+order form, Licensor grants you a non-exclusive, non-transferable, revocable
+license to deploy and execute this software solely within your organization's
+internal network (on-premise or designated private cloud instance).
+
+2. RESTRICTIONS
+You shall not:
+(a) Reverse engineer, decompile, disassemble, or derive source code from any
+    compiled or protected components, except as expressly permitted by applicable law;
+(b) Sub-license, rent, lease, sell, distribute, or host this software as a
+    managed multi-tenant SaaS service for third parties without prior written consent;
+(c) Remove, alter, or obscure any proprietary notices, labels, or trademarks;
+(d) Exceed the licensed capacity, instance count, or authorized user seats
+    specified in your enterprise agreement.
+
+3. DATA OWNERSHIP & ON-PREMISE LOCAL RESIDENCY
+Licensor acknowledges and agrees that all data, operational records, vector
+indices, knowledge artifacts, attachments, and configurations processed or stored
+by the software reside strictly on your infrastructure. Licensor claims no
+ownership over your data and collects no operational data or telemetry without
+explicit, written opt-in consent.
+
+4. DISCLAIMER OF WARRANTIES
+EXCEPT AS EXPRESSLY STATED IN A FORMAL SERVICE LEVEL AGREEMENT (SLA), THE
+SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+
+5. LIMITATION OF LIABILITY
+IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING LOSS OF PROFITS, DATA CORRUPTION,
+OR BUSINESS INTERRUPTION) ARISING OUT OF THE USE OR INABILITY TO USE THIS
+SOFTWARE.
+
+For commercial inquiries, support, and enterprise deployment agreements, please
+contact: contact@argosworks.com

@@ -1,0 +1,91 @@
+:root{
+  --bg: #f5f7f4;
+  --surface: #ffffff;
+  --ink: #1b2321;
+  --ink-soft: #57625c;
+  --ink-faint: #8b958f;
+  --line: #dde2dd;
+  --line-strong: #c3cbc3;
+  --code-bg: #eef1ec;
+
+  --accent: #c24a2c;        /* 기술영업팀 계열 */
+  --accent-soft: #f7e7e1;
+  --accent-2: #0284c7;      /* 연구소/대시보드 메인 Sky Blue / Cyan */
+  --accent-2-soft: #e0f2fe;
+
+  --stat-info: #3e6fa5;     --stat-info-soft: #e6eef6;
+  --stat-good: #3e8e5a;     --stat-good-soft: #e5f2e9;
+  --stat-critical: #a6383a; --stat-critical-soft: #f6e4e1;
+
+  /* 부서 구분용 팔레트 — 부서가 추가될 때마다 순서대로 돌려 씀 */
+  --dept-color-1: var(--accent);
+  --dept-color-2: var(--accent-2);
+  --dept-color-3: #6e5cb6;
+  --dept-color-4: #9c7a22;
+  --dept-color-5: #4c6b85;
+  --dept-color-6: #8a4a73;
+
+  /* 상단 탭(책갈피) 통일 색상 — 메인 테마 Blue/Cyan 계열로 일원화 */
+  --tab-home: var(--accent-2);              --tab-home-soft: var(--accent-2-soft);
+  --tab-dash: var(--accent-2);              --tab-dash-soft: var(--accent-2-soft);
+  --tab-jira: var(--accent-2);              --tab-jira-soft: var(--accent-2-soft);
+  --tab-schedule: var(--accent-2);          --tab-schedule-soft: var(--accent-2-soft);
+  --tab-pim: var(--accent-2);               --tab-pim-soft: var(--accent-2-soft);
+  --tab-history: var(--accent-2);           --tab-history-soft: var(--accent-2-soft);
+  --tab-settings: var(--accent-2);          --tab-settings-soft: var(--accent-2-soft);
+  --tab-chat: var(--accent-2);              --tab-chat-soft: var(--accent-2-soft);
+  --vs-cyan: #0284c7;
+  --text-cyan: #0284c7;
+
+  --shadow: 0 1px 2px rgba(27,35,33,0.06), 0 8px 24px rgba(27,35,33,0.05);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg: #12161a; --surface: #181e22; --ink: #e8ece9; --ink-soft: #a3aead; --ink-faint: #71807c;
+    --line: #2a3238; --line-strong: #3a444b; --code-bg: #1f262b;
+    --accent: #ff8a63; --accent-soft: #3a271f;
+    --accent-2: #38bdf8; --accent-2-soft: #0c2d48;
+    --stat-info: #7fb0e6; --stat-info-soft: #1c2a38;
+    --stat-good: #7dd19c; --stat-good-soft: #1a2f22;
+    --stat-critical: #e58a86; --stat-critical-soft: #33201f;
+    --dept-color-1: var(--accent); --dept-color-2: var(--accent-2);
+    --dept-color-3: #b6a6f2; --dept-color-4: #e3c468; --dept-color-5: #8fb4d1; --dept-color-6: #e0a0c8;
+    --tab-home: var(--accent-2); --tab-home-soft: var(--accent-2-soft);
+    --tab-dash: var(--accent-2); --tab-dash-soft: var(--accent-2-soft);
+    --tab-jira: var(--accent-2); --tab-jira-soft: var(--accent-2-soft);
+    --tab-schedule: var(--accent-2); --tab-schedule-soft: var(--accent-2-soft);
+    --tab-pim: var(--accent-2); --tab-pim-soft: var(--accent-2-soft);
+    --tab-history: var(--accent-2); --tab-history-soft: var(--accent-2-soft);
+    --tab-settings: var(--accent-2); --tab-settings-soft: var(--accent-2-soft);
+    --tab-chat: var(--accent-2); --tab-chat-soft: var(--accent-2-soft);
+    --vs-cyan: #38bdf8;
+    --text-cyan: #38bdf8;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg: #12161a; --surface: #181e22; --ink: #e8ece9; --ink-soft: #a3aead; --ink-faint: #71807c;
+  --line: #2a3238; --line-strong: #3a444b; --code-bg: #1f262b;
+  --accent: #ff8a63; --accent-soft: #3a271f;
+  --accent-2: #38bdf8; --accent-2-soft: #0c2d48;
+  --stat-info: #7fb0e6; --stat-info-soft: #1c2a38;
+  --stat-good: #7dd19c; --stat-good-soft: #1a2f22;
+  --stat-critical: #e58a86; --stat-critical-soft: #33201f;
+  --dept-color-1: var(--accent); --dept-color-2: var(--accent-2);
+  --dept-color-3: #b6a6f2; --dept-color-4: #e3c468; --dept-color-5: #8fb4d1; --dept-color-6: #e0a0c8;
+  --tab-home: var(--accent-2); --tab-home-soft: var(--accent-2-soft);
+  --tab-dash: var(--accent-2); --tab-dash-soft: var(--accent-2-soft);
+  --tab-jira: var(--accent-2); --tab-jira-soft: var(--accent-2-soft);
+  --tab-schedule: var(--accent-2); --tab-schedule-soft: var(--accent-2-soft);
+  --tab-pim: var(--accent-2); --tab-pim-soft: var(--accent-2-soft);
+  --tab-history: var(--accent-2); --tab-history-soft: var(--accent-2-soft);
+  --tab-settings: var(--accent-2); --tab-settings-soft: var(--accent-2-soft);
+  --tab-chat: var(--accent-2); --tab-chat-soft: var(--accent-2-soft);
+  --vs-cyan: #38bdf8;
+  --text-cyan: #38bdf8;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  color-scheme: dark;
+}

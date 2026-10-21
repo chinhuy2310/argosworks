@@ -1,0 +1,59 @@
+# ==============================================================================
+# ARGOS WORKS — Git Ignore Specification
+# ==============================================================================
+
+# Environment files & Secrets
+.env
+.env.local
+.env.*.local
+.csrf_secret
+data/.csrf_secret
+
+# SQLite Databases & Dynamic Production Data
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+data/backups/
+data/attachments/
+data/products/
+data/chat_history/
+data/reports/
+data/test_*
+
+# Logs & Temporary Files
+logs/
+*.log
+*.tmp
+*.tmp.*
+scratch/
+filelist.txt
+
+# Python Cache & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# OS-Specific Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo

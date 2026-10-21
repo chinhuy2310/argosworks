@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARGOS WORKS | Access Portal</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --argos-cyan: #33aad3;        /* Primary CI Cyan */
+      --argos-light: #7fccdf;       /* Highlight / Glow */
+      --argos-teal: #2e90aa;        /* Deep Steel Teal */
+      --argos-glow: rgba(51, 170, 211, 0.55);
+      --bg-dark: #050a14;           /* Deep Obsidian Cyber Navy */
+      --input-bg: rgba(9, 17, 28, 0.78);
+      --border-glass: rgba(127, 204, 223, 0.16);
+      --border-focus: rgba(51, 170, 211, 0.85);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    html {
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
+
+    /* === SLEEK CYBER SCROLLBAR (Zero horizontal layout shift) === */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(127, 204, 223, 0.22);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(127, 204, 223, 0.45);
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 20px 0;
+    }
+
+    /* === LUXURIOUS CYBER CYAN & DEEP NAVY BACKGROUND === */
+    .bg-canvas-wrap {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .bg-fluid-layer {
+      position: absolute;
+      width: 100%; height: 100%;
+      background: 
+        radial-gradient(circle at 88% 18%, rgba(46, 144, 170, 0.32) 0%, transparent 45%),
+        radial-gradient(circle at 12% 82%, rgba(51, 170, 211, 0.28) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(10, 18, 32, 0.95) 0%, #050a14 100%);
+    }
+
+    .bg-ribbons {
+      position: absolute;
+      top: -10%; left: -10%;
+      width: 120%; height: 120%;
+      opacity: 0.85;
+      mix-blend-mode: screen;
+      filter: blur(1px);
+    }
+
+    /* === LANGUAGE TOGGLE BUTTON (Inside Card Header) === */
+    .lang-toggle-btn {
+      position: relative;
+      margin-left: auto;
+      background: rgba(14, 24, 38, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(127, 204, 223, 0.28);
+      color: #e2e8f0;
+      padding: 5px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      flex-shrink: 0;
+    }
+    .lang-toggle-btn:hover {
+      background: rgba(22, 36, 56, 0.95);
+      border-color: var(--argos-light);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(51, 170, 211, 0.45);
+      transform: translateY(-1px);
+    }
+
+    /* === BACKGROUND AMBIENT HALO & LIGHT STREAKS === */
+    .halo {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(750px 500px at 50% 45%, rgba(51, 170, 211, 0.16), transparent 65%);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .streak {
+      position: fixed;
+      left: -25%;
+      width: 150%;
+      filter: blur(36px);
+      opacity: 0.55;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .streak.a {
+      top: 16%;
+      height: 120px;
+      transform: rotate(-16deg);
+      background: linear-gradient(90deg, transparent, rgba(51, 170, 211, 0.25) 32%, rgba(127, 204, 223, 0.35) 50%, rgba(46, 144, 170, 0.20) 68%, transparent);
+    }
+    .streak.b {
+      top: 58%;
+      height: 90px;
+      transform: rotate(-16deg);
+      background: linear-gradient(90deg, transparent, rgba(46, 144, 170, 0.18) 40%, rgba(127, 204, 223, 0.24) 52%, transparent 72%);
+    }
+
+    /* === MAIN STAGE CONTAINER === */
+    .stage-container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 440px;
+      padding: 16px;
+      margin: auto;
+    }
+
+    /* === CARD FRAME WRAPPER === */
+    .auth-card-wrapper {
+      position: relative;
+      width: 100%;
+      border-radius: 26px;
+      padding: 34px 32px 38px;
+      box-shadow: 
+        0 30px 70px -10px rgba(0, 0, 0, 0.95),
+        0 0 40px -10px rgba(51, 170, 211, 0.16);
+      overflow: visible;
+      will-change: height, box-shadow;
+    }
+
+    /* Full Glass Shell (Normal Card Appearance) */
+    .card-shell {
+      position: absolute;
+      inset: 0;
+      border-radius: 26px;
+      border: 1px solid rgba(127, 204, 223, 0.18);
+      background: linear-gradient(165deg, rgba(14, 28, 48, 0.94), rgba(7, 14, 26, 0.96));
+      box-shadow: inset 0 1px 0 rgba(127, 204, 223, 0.20), 0 25px 60px rgba(0, 0, 0, 0.80);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* === SPLIT TRIANGULAR PIECES (Opposite diagonal halves) === */
+    .card-piece {
+      position: absolute;
+      inset: 0;
+      border-radius: 26px;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Top-Left Half Triangle (Lighter Cyan facet) */
+    .card-piece.tl {
+      clip-path: polygon(0 0, 100.5% 0, 0 100.5%);
+      background: linear-gradient(150deg, rgba(51, 170, 211, 0.25), rgba(127, 204, 223, 0.12) 45%, rgba(14, 28, 48, 0.92));
+      border: 1px solid rgba(127, 204, 223, 0.35);
+    }
+
+    /* Bottom-Right Half Triangle (Darker Steel Teal facet) */
+    .card-piece.br {
+      clip-path: polygon(100% 0, 100% 100%, 0 100%);
+      background: linear-gradient(330deg, rgba(7, 14, 26, 0.96), rgba(5, 11, 20, 0.85) 45%, rgba(46, 144, 170, 0.15));
+      border: 1px solid rgba(46, 144, 170, 0.28);
+    }
+
+    /* === CENTER EMBLEM (Revealed during morph) === */
+    .center-emblem {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(0.65);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 18;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .center-emblem-svg {
+      width: 100px;
+      height: 100px;
+      filter: drop-shadow(0 0 25px rgba(51, 170, 211, 0.85)) drop-shadow(0 0 45px rgba(127, 204, 223, 0.5));
+    }
+    .emblem-glow {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(127, 204, 223, 0.55) 0%, rgba(51, 170, 211, 0.25) 45%, transparent 70%);
+      filter: blur(22px);
+    }
+
+    /* === SEAM & VISION CYAN BLUR FLASH === */
+    .card-seam {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 700px;
+      height: 1.5px;
+      transform: translate(-50%, -50%) rotate(-58deg);
+      background: linear-gradient(90deg, transparent, rgba(127, 204, 223, 0.95), #ffffff, rgba(127, 204, 223, 0.95), transparent);
+      box-shadow: 0 0 16px rgba(51, 170, 211, 0.95);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .card-flash {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.98) 0%, rgba(127, 204, 223, 0.95) 20%, rgba(51, 170, 211, 0.85) 38%, rgba(46, 144, 170, 0.35) 60%, transparent 75%);
+      filter: blur(14px);
+      opacity: 0;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      z-index: 20;
+    }
+
+    .login-trans-flash {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 45%, #ffffff 25%, #eaf6fa 65%, #f4f7fb 100%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 99999;
+      will-change: opacity;
+    }
+
+    /* === FORM CONTENT CONTAINER === */
+    .form-content-wrap {
+      position: relative;
+      z-index: 10;
+    }
+
+    /* === BRAND BADGE HEADER === */
+    .brand-badge-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(127, 204, 223, 0.14);
+    }
+    .brand-badge-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon-svg {
+      height: 36px;
+      width: 36px;
+      filter: drop-shadow(0 0 10px rgba(51, 170, 211, 0.45));
+      flex-shrink: 0;
+    }
+    .brand-name-top {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      background: linear-gradient(92deg, #ffffff, #7fccdf 55%, #33aad3);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* === HEADER TYPOGRAPHY === */
+    .header-section {
+      margin-bottom: 16px;
+    }
+    .header-title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .header-title .cyan-text {
+      color: var(--argos-light);
+      background: linear-gradient(92deg, #a5e2ef, #33aad3 60%, #2e90aa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 24px rgba(51, 170, 211, 0.45);
+    }
+    .header-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-weight: 400;
+      line-height: 1.45;
+    }
+
+    /* === INPUT GROUPS === */
+    .input-field-group {
+      margin-bottom: 12px;
+    }
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 5px;
+      letter-spacing: 0.3px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      width: 18px;
+      height: 18px;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      transition: color 0.25s;
+    }
+
+    .pill-input {
+      width: 100%;
+      padding: 11px 40px 11px 40px;
+      background: var(--input-bg);
+      border: 1px solid var(--border-glass);
+      border-radius: 12px;
+      color: #f8fafc;
+      font-size: 13.5px;
+      outline: none;
+      transition: all 0.25s ease;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+    .pill-input::placeholder {
+      color: #475569;
+    }
+    .pill-input:focus {
+      border-color: var(--border-focus);
+      background: rgba(12, 22, 36, 0.94);
+      box-shadow: 
+        0 0 0 3px rgba(51, 170, 211, 0.20),
+        inset 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+    .input-wrapper:focus-within .input-icon {
+      color: var(--argos-light);
+    }
+
+    /* Password Eye Toggle */
+    .eye-toggle-btn {
+      position: absolute;
+      right: 14px;
+      background: transparent;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+    .eye-toggle-btn:hover {
+      color: #cbd5e1;
+    }
+
+    /* === PRIMARY SUBMIT BUTTON === */
+    .cyan-submit-btn {
+      width: 100%;
+      padding: 13px 20px;
+      background: linear-gradient(135deg, #7fccdf 0%, #33aad3 55%, #2e90aa 100%);
+      color: #050a14;
+      border: none;
+      border-radius: 28px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(51, 170, 211, 0.38);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-top: 8px;
+    }
+    .cyan-submit-btn:hover {
+      background: linear-gradient(135deg, #a5e2ef 0%, #7fccdf 40%, #33aad3 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(51, 170, 211, 0.55);
+    }
+    .cyan-submit-btn:active {
+      transform: translateY(0);
+    }
+    .cyan-submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* === FOOTER SWITCH LINK === */
+    .switch-mode-footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .switch-link {
+      color: var(--argos-light);
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 4px;
+      transition: color 0.2s, text-shadow 0.2s;
+    }
+    .switch-link:hover {
+      color: #a5e2ef;
+      text-shadow: 0 0 12px rgba(51, 170, 211, 0.7);
+      text-decoration: underline;
+    }
+
+    /* === ERROR / SUCCESS BANNER === */
+    .auth-banner {
+      display: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      margin-bottom: 14px;
+      text-align: center;
+      animation: fadeIn 0.3s ease;
+    }
+    .auth-banner.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+    .auth-banner.success {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #86efac;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Bottom subtle branding mark */
+    .brand-mark-bottom {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #475569;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fluid Cyber Navy & Cyan Canvas Background -->
+  <div class="bg-canvas-wrap">
+    <div class="bg-fluid-layer"></div>
+    <div class="halo"></div>
+    <div class="streak a"></div>
+    <div class="streak b"></div>
+    <svg class="bg-ribbons" viewBox="0 0 1200 800" fill="none" preserveAspectRatio="none">
+      <path d="M-100 200 C 300 100, 500 600, 1300 400" stroke="url(#cyanGrad1)" stroke-width="120" stroke-linecap="round" opacity="0.32"/>
+      <path d="M-50 600 C 400 750, 700 250, 1350 150" stroke="url(#cyanGrad2)" stroke-width="90" stroke-linecap="round" opacity="0.25"/>
+      <defs>
+        <linearGradient id="cyanGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0e243a" stop-opacity="0.2"/>
+          <stop offset="50%" stop-color="#33aad3" stop-opacity="0.65"/>
+          <stop offset="100%" stop-color="#7fccdf" stop-opacity="0.15"/>
+        </linearGradient>
+        <linearGradient id="cyanGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#2e90aa" stop-opacity="0.1"/>
+          <stop offset="60%" stop-color="#33aad3" stop-opacity="0.55"/>
+          <stop offset="100%" stop-color="#7fccdf" stop-opacity="0.25"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <!-- Stage Container -->
+  <div class="stage-container">
+    
+    <!-- Outer Card Frame -->
+    <div id="auth-card-wrapper" class="auth-card-wrapper">
+
+      <!-- Card Glass Shell (Normal Card Appearance) -->
+      <div id="card-shell" class="card-shell"></div>
+
+      <!-- Split Triangular Pieces (Top-Left & Bottom-Right diagonal halves) -->
+      <div id="piece-tl" class="card-piece tl"></div>
+      <div id="piece-br" class="card-piece br"></div>
+
+      <!-- Center Argos Works Emblem (Revealed during morph) -->
+      <div id="center-emblem" class="center-emblem">
+        <div class="emblem-glow"></div>
+        <svg class="center-emblem-svg" viewBox="0 0 200 200" role="img" aria-hidden="true">
+          <defs>
+            <linearGradient id="cLA" gradientUnits="userSpaceOnUse" x1="100" y1="30" x2="100" y2="152">
+              <stop offset="0" stop-color="#9ad4e8"/><stop offset="1" stop-color="#3a99c9"/>
+            </linearGradient>
+            <linearGradient id="cLF" gradientUnits="userSpaceOnUse" x1="100" y1="38" x2="146" y2="144">
+              <stop offset="0" stop-color="#4e9fc8" stop-opacity="0.72"/><stop offset="1" stop-color="#a9d8ec" stop-opacity="0.42"/>
+            </linearGradient>
+            <linearGradient id="cLB" gradientUnits="userSpaceOnUse" x1="75" y1="120" x2="125" y2="135">
+              <stop offset="0" stop-color="#5fb6da"/><stop offset="1" stop-color="#2d86b8"/>
+            </linearGradient>
+          </defs>
+          <path d="M100 38 L146 144" fill="none" stroke="url(#cLF)" stroke-width="24" stroke-linecap="round"/>
+          <path d="M100 38 L54 144" fill="none" stroke="url(#cLA)" stroke-width="24" stroke-linecap="round"/>
+          <rect x="75" y="120" width="50" height="15" rx="7.5" fill="#b6dcef" fill-opacity="1"/>
+          <rect x="75" y="120" width="30" height="15" rx="7.5" fill="url(#cLB)"/>
+          <path d="M26 169 C58 153 110 143 170 141 C116 151 62 159 40 173 C34 177 24 175 26 169 Z" fill="#3a99c9"/>
+          <circle cx="171" cy="139" r="5.4" fill="#4aa6d0"/>
+        </svg>
+      </div>
+
+      <!-- Center Seam Line & Vision Cyan Blur Flash Burst -->
+      <div id="card-seam" class="card-seam"></div>
+      <div id="card-flash" class="card-flash"></div>
+
+      <!-- Form Content Wrapper (Unified 2D Native Form) -->
+      <div id="form-content-wrap" class="form-content-wrap">
+        
+        <!-- Official Brand Header -->
+        <div class="brand-badge-header">
+          <div class="brand-badge-left">
+            <svg class="brand-icon-svg" viewBox="0 0 200 200" role="img" aria-hidden="true">
+              <defs>
+                <linearGradient id="hLA" gradientUnits="userSpaceOnUse" x1="100" y1="30" x2="100" y2="152">
+                  <stop offset="0" stop-color="#9ad4e8"/><stop offset="1" stop-color="#3a99c9"/>
+                </linearGradient>
+                <linearGradient id="hLF" gradientUnits="userSpaceOnUse" x1="100" y1="38" x2="146" y2="144">
+                  <stop offset="0" stop-color="#4e9fc8" stop-opacity="0.72"/><stop offset="1" stop-color="#a9d8ec" stop-opacity="0.42"/>
+                </linearGradient>
+                <linearGradient id="hLB" gradientUnits="userSpaceOnUse" x1="75" y1="120" x2="125" y2="135">
+                  <stop offset="0" stop-color="#5fb6da"/><stop offset="1" stop-color="#2d86b8"/>
+                </linearGradient>
+              </defs>
+              <path d="M100 38 L146 144" fill="none" stroke="url(#hLF)" stroke-width="24" stroke-linecap="round"/>
+              <path d="M100 38 L54 144" fill="none" stroke="url(#hLA)" stroke-width="24" stroke-linecap="round"/>
+              <rect x="75" y="120" width="50" height="15" rx="7.5" fill="#b6dcef" fill-opacity="1"/>
+              <rect x="75" y="120" width="30" height="15" rx="7.5" fill="url(#hLB)"/>
+              <path d="M26 169 C58 153 110 143 170 141 C116 151 62 159 40 173 C34 177 24 175 26 169 Z" fill="#3a99c9"/>
+              <circle cx="171" cy="139" r="5.4" fill="#4aa6d0"/>
+            </svg>
+            <span class="brand-name-top">ARGOS WORKS</span>
+          </div>
+
+          <!-- Language Switcher (Embedded in card header) -->
+          <button type="button" id="btn-login-lang" class="lang-toggle-btn" title="언어 변경 / Language">
+            <span style="font-size: 13px;">🌐</span> <span id="lang-btn-label">KO</span>
+          </button>
+        </div>
+
+        <!-- Header -->
+        <div class="header-section">
+          <h1 id="form-title" class="header-title">
+            <span id="title-main">로그</span> <span id="title-accent" class="cyan-text">인</span>
+          </h1>
+          <p id="form-subtitle" class="header-subtitle">
+            지능형 업무관리 시스템에 오신 것을 환영합니다
+          </p>
+        </div>
+
+        <!-- Banner Message -->
+        <div id="auth-banner" class="auth-banner"></div>
+
+        <!-- Unified Form -->
+        <form id="auth-form" autocomplete="off">
+          
+          <!-- 1. Username / Email (Both Login & Register) -->
+          <div class="input-field-group">
+            <label id="lbl-username" class="field-label">아이디 또는 이메일</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </span>
+              <input type="text" id="auth-username" class="pill-input" required placeholder="ArgosWorks ID 또는 회사 이메일">
+            </div>
+          </div>
+
+          <!-- 2. Full Name (Register Mode Only) -->
+          <div id="name-group" class="input-field-group" style="display: none;">
+            <label id="lbl-name" class="field-label">이름 (Full Name)</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </span>
+              <input type="text" id="auth-name" class="pill-input" placeholder="예: 홍길동">
+            </div>
+          </div>
+
+          <!-- 3. Password (Both) -->
+          <div class="input-field-group">
+            <label id="lbl-password" class="field-label">비밀번호</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <input type="password" id="auth-password" class="pill-input" required placeholder="••••••••">
+              <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('auth-password')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4. Confirm Password (Register Mode Only) -->
+          <div id="confirm-password-group" class="input-field-group" style="display: none;">
+            <label id="lbl-confirm-password" class="field-label">비밀번호 확인</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <input type="password" id="auth-confirm-password" class="pill-input" placeholder="••••••••">
+              <button type="button" class="eye-toggle-btn" onclick="togglePasswordVisibility('auth-confirm-password')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+
+          <!-- Submit Button -->
+          <button type="submit" id="btn-submit" class="cyan-submit-btn">
+            <span id="txt-submit">로그인</span>
+            <span style="font-size: 16px;">➔</span>
+          </button>
+        </form>
+
+        <!-- Switch Link Footer -->
+        <div class="switch-mode-footer">
+          <span id="switch-prompt">계정 발급이 필요하신가요?</span>
+          <span id="btn-switch-auth" class="switch-link">계정 발급 요청</span>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Bottom Brand Identifier -->
+    <div class="brand-mark-bottom">
+      <span>ARGOS WORKS</span>
+    </div>
+
+  </div>
+
+  <!-- Transition Flash Veil -->
+  <div id="login-trans-flash" class="login-trans-flash"></div>
+
+  <script src="/js/login.js?v=4.0"></script>
+</body>
+</html>

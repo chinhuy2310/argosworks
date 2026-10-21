@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  argos-works:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: argos-works:latest
+    container_name: argos-works
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      - TZ=${TZ:-Asia/Seoul}
+      - HOST=0.0.0.0
+      - PORT=8080
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-argos_admin}:${POSTGRES_PASSWORD:-argos_secure_password_2026}@postgres:5432/${POSTGRES_DB:-argos_works}
+    volumes:
+      # Persistent SQLite CSDL, backups, attachments, vectors
+      - ./data:/app/data
+      # Server runtime configuration
+      - ./server/config.json:/app/server/config.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ============================================================================
+  # Caddy Reverse Proxy - Tự động cấp phát chứng chỉ SSL/TLS & HTTPS mặc định
+  # - Cổng 80: Tự động chuyển hướng (Redirect 301) sang HTTPS
+  # - Cổng 443: HTTPS mã hóa chuẩn Enterprise (Let's Encrypt / ZeroSSL / Internal TLS)
+  # ============================================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: argos-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"     # HTTP -> Tự động chuyển hướng HTTPS
+      - "443:443"   # HTTPS chính thức
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy_data:/data
+      - ./data/caddy_config:/config
+    depends_on:
+      - argos-works
+
+  # ============================================================================
+  # PostgreSQL Enterprise Database
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: argos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-argos_works}
+      POSTGRES_USER: ${POSTGRES_USER:-argos_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-argos_secure_password_2026}
+    volumes:
+      - ./data/postgres_data:/var/lib/postgresql/data
+      - ./server/schema.postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-argos_admin} -d ${POSTGRES_DB:-argos_works}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+

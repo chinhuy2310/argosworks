@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARGOS WORKS | Logo Redesign Showcase (Vision119 DNA)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #050a14;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      padding: 40px 24px;
+    }
+    .header {
+      max-width: 1100px;
+      margin: 0 auto 36px;
+      text-align: center;
+    }
+    .badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(51, 170, 211, 0.15);
+      border: 1px solid rgba(127, 204, 223, 0.35);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #7fccdf;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(92deg, #ffffff, #7fccdf 60%, #33aad3);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+      max-width: 680px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+    .vision-ref-bar {
+      max-width: 1100px;
+      margin: 0 auto 40px;
+      background: rgba(14, 28, 48, 0.6);
+      border: 1px solid rgba(127, 204, 223, 0.2);
+      border-radius: 16px;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      backdrop-filter: blur(12px);
+    }
+    .vision-ref-img {
+      height: 48px;
+      width: auto;
+      background: #ffffff;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+    .vision-ref-text {
+      flex: 1;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.45;
+    }
+    .vision-ref-text strong {
+      color: #7fccdf;
+    }
+
+    .grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+    .card {
+      background: linear-gradient(165deg, rgba(14, 28, 48, 0.94), rgba(7, 14, 26, 0.96));
+      border: 1px solid rgba(127, 204, 223, 0.2);
+      border-radius: 20px;
+      padding: 28px 24px;
+      position: relative;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    }
+    .card:hover {
+      border-color: #33aad3;
+      transform: translateY(-4px);
+      box-shadow: 0 25px 60px rgba(51, 170, 211, 0.18);
+    }
+    .card.recommended {
+      border-color: rgba(127, 204, 223, 0.5);
+      background: linear-gradient(165deg, rgba(18, 38, 64, 0.95), rgba(8, 18, 32, 0.98));
+    }
+    .card-rec-badge {
+      position: absolute;
+      top: -12px;
+      right: 20px;
+      background: linear-gradient(135deg, #7fccdf, #33aad3);
+      color: #050a14;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .logo-preview-box {
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(4, 9, 18, 0.7);
+      border-radius: 14px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(127, 204, 223, 0.1);
+    }
+    .logo-preview-box svg {
+      width: 120px;
+      height: 120px;
+      filter: drop-shadow(0 0 16px rgba(51, 170, 211, 0.4));
+      transition: transform 0.3s ease;
+    }
+    .card:hover .logo-preview-box svg {
+      transform: scale(1.06);
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-sub {
+      font-size: 12.5px;
+      color: #7fccdf;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .card-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.55;
+      margin-bottom: 20px;
+    }
+    .card-desc ul {
+      margin-left: 18px;
+      margin-top: 6px;
+    }
+    .card-desc li {
+      margin-bottom: 4px;
+    }
+
+    .live-demo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+    .live-demo-label {
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 600;
+      min-width: 55px;
+      text-transform: uppercase;
+    }
+    .live-demo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+    .live-demo-item svg {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+    }
+    .live-demo-brand-name {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      background: linear-gradient(92deg, #ffffff, #7fccdf 55%, #33aad3);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .btn-apply {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgba(127, 204, 223, 0.35);
+      background: rgba(51, 170, 211, 0.12);
+      color: #7fccdf;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s;
+      margin-top: 8px;
+    }
+    .btn-apply:hover {
+      background: linear-gradient(135deg, #7fccdf, #33aad3);
+      color: #050a14;
+      border-color: transparent;
+      box-shadow: 0 0 20px rgba(51, 170, 211, 0.4);
+    }
+    .btn-apply.selected {
+      background: linear-gradient(135deg, #7fccdf, #33aad3);
+      color: #050a14;
+      border-color: transparent;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="badge">VISION119 BRAND HERITAGE</div>
+    <h1>ARGOS WORKS Logo Redesign Showcase</h1>
+    <p class="subtitle">
+      Thiết kế lại nhận diện logo kết hợp hình khối chữ <strong>A (Argos)</strong> và biểu tượng <strong>WORKS (Công việc / Quy trình / Đa giác W)</strong>, kế thừa phong cách đa giác vát góc (Geometric Facet Shard) đặc trưng từ <strong>vision119.com</strong>.
+    </p>
+  </div>
+
+  <!-- Vision119 Heritage Reference -->
+  <div class="vision-ref-bar">
+    <img src="/images/vision_identity_logo.png" alt="Vision Logo Reference" class="vision-ref-img">
+    <div class="vision-ref-text">
+      <strong>Ngôn ngữ thiết kế gốc của Vision119:</strong> Chữ V và S lồng ghép bằng các khối đa giác cắt vát (Polygonal Facets), mảng tam giác giao thoa màu Cyan sáng phát quang (`#7fccdf`) và hai mảng vát góc đối xứng mang màu Primary Cyan (`#33aad3`) & Deep Steel Teal (`#227b94`).
+    </div>
+  </div>
+
+  <!-- ================= BẢN LƯU TRỮ TÁCH NỀN TRONG SUỐT (TRANSPARENT PNG) ================= -->
+  <div style="max-width: 1100px; margin: 0 auto 48px; background: linear-gradient(165deg, rgba(14, 28, 48, 0.96), rgba(6, 12, 22, 0.98)); border: 2px solid #33aad3; border-radius: 24px; padding: 32px 28px; box-shadow: 0 20px 60px rgba(51, 170, 211, 0.28);">
+    
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 24px;">💎</span>
+        <div>
+          <h2 style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">
+            Bản Lưu Trữ (Bản 2) — Đã Tách Nền Trong Suốt Thành Công!
+          </h2>
+          <p style="font-size: 13px; color: #7fccdf; margin-top: 2px;">
+            File PNG chuẩn Alpha Transparency chất lượng cao (1024x1024, không vệt đen, không răng cưa)
+          </p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <a href="/images/argos_icon_transparent.png" download="argos_icon_transparent.png" style="text-decoration: none; padding: 10px 18px; background: linear-gradient(135deg, #7fccdf, #33aad3); color: #050a14; border-radius: 10px; font-size: 13px; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 16px rgba(51, 170, 211, 0.4);">
+          ⬇ Tải Icon Trong Suốt (.PNG)
+        </a>
+        <a href="/images/argos_logo_full_transparent.png" download="argos_logo_full_transparent.png" style="text-decoration: none; padding: 10px 18px; background: rgba(51, 170, 211, 0.15); border: 1px solid rgba(127, 204, 223, 0.4); color: #7fccdf; border-radius: 10px; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+          ⬇ Tải Trọn Bộ Logo + Chữ (.PNG)
+        </a>
+      </div>
+    </div>
+
+    <p style="font-size: 13.5px; color: #94a3b8; line-height: 1.5; margin-bottom: 24px;">
+      Toàn bộ nền màu tối (Dark Navy) đã được thuật toán khử nền quang học bóc tách 100%. Bên dưới là kiểm chứng thực tế của biểu tượng trên 3 môi trường nền khác nhau:
+    </p>
+
+    <!-- 3 Preview Boxes -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+      
+      <!-- Box 1: Dark Cyber Background -->
+      <div style="border-radius: 16px; border: 1px solid rgba(127, 204, 223, 0.25); overflow: hidden; background: #050a14; text-align: center; padding: 24px 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #7fccdf; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px;">
+          1. Trên Nền Tối Hệ Thống (#050a14)
+        </div>
+        <img src="/images/argos_icon_transparent.png" alt="Icon on Dark" style="height: 140px; width: auto; max-width: 100%; object-fit: contain; filter: drop-shadow(0 0 20px rgba(51, 170, 211, 0.35));">
+        <div style="margin-top: 14px; font-size: 12px; color: #64748b;">Màu Cyan phát quang sâu thẳm, đẳng cấp</div>
+      </div>
+
+      <!-- Box 2: Checkerboard Transparency Grid -->
+      <div style="border-radius: 16px; border: 1px solid rgba(127, 204, 223, 0.25); overflow: hidden; background-image: linear-gradient(45deg, #1e293b 25%, transparent 25%), linear-gradient(-45deg, #1e293b 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1e293b 75%), linear-gradient(-45deg, transparent 75%, #1e293b 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px; background-color: #0f172a; text-align: center; padding: 24px 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #f8fafc; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px;">
+          2. Nền Trong Suốt (Alpha Grid)
+        </div>
+        <img src="/images/argos_icon_transparent.png" alt="Icon on Grid" style="height: 140px; width: auto; max-width: 100%; object-fit: contain;">
+        <div style="margin-top: 14px; font-size: 12px; color: #94a3b8;">Khung lưới kiểm chứng độ trong suốt tuyệt đối</div>
+      </div>
+
+      <!-- Box 3: Pure White Background -->
+      <div style="border-radius: 16px; border: 1px solid rgba(127, 204, 223, 0.25); overflow: hidden; background: #ffffff; text-align: center; padding: 24px 16px;">
+        <div style="font-size: 12px; font-weight: 700; color: #0284c7; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px;">
+          3. Trên Nền Trắng Sáng (In Ấn / Giấy Tờ)
+        </div>
+        <img src="/images/argos_icon_transparent.png" alt="Icon on White" style="height: 140px; width: auto; max-width: 100%; object-fit: contain;">
+        <div style="margin-top: 14px; font-size: 12px; color: #64748b;">Sắc nét hoàn hảo, không để lại viền đen lem nhem</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- AI Graphic Design Generated Concepts Showcase -->
+  <div style="max-width: 1100px; margin: 0 auto 36px;">
+    <h2 style="font-size: 20px; font-weight: 700; color: #7fccdf; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+      <span>🌟</span> Bản Thiết Kế Mới: Chữ A Làm Chủ Đạo (A-Dominant Hero Logos)
+    </h2>
+    <p style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;">
+      Dựa trên phong cách Bản 2 mà bạn yêu thích, chúng tôi đã tinh chỉnh để <strong>chữ A trở thành biểu tượng trung tâm tuyệt đối</strong>, loại bỏ các chi tiết xòe ra ngoài để giữ trọn vẹn hình khối tam giác chữ A uy nghi và tích hợp chữ W (Works) vào lõi bên trong.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 28px;">
+      
+      <!-- New A Dominant 1: Pure Ribbon Arch -->
+      <div style="background: linear-gradient(165deg, rgba(18, 38, 64, 0.95), rgba(8, 18, 32, 0.98)); border: 2px solid #33aad3; border-radius: 20px; padding: 22px; text-align: center; position: relative; box-shadow: 0 15px 40px rgba(51, 170, 211, 0.25);">
+        <div style="position: absolute; top: -12px; right: 20px; background: linear-gradient(135deg, #7fccdf, #33aad3); color: #050a14; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 12px; letter-spacing: 0.5px; text-transform: uppercase;">
+          Khuyên Dùng ★
+        </div>
+        <img src="/images/ai_logo_flat_a.jpg" alt="A Dominant Ribbon" style="width: 100%; max-width: 290px; border-radius: 14px; box-shadow: 0 12px 35px rgba(51, 170, 211, 0.35); margin-bottom: 14px;">
+        <h3 style="font-size: 17px; color: #ffffff; margin-bottom: 6px;">Bản A Chủ Đạo 1: Pure Ribbon Arch</h3>
+        <p style="font-size: 12.5px; color: #94a3b8; line-height: 1.5; text-align: left;">
+          • <strong>Chữ A chủ đạo:</strong> Khung viền tam giác chữ A chiếm trọn thị giác, vững chãi và dễ nhận diện ngay từ khoảng cách xa.<br>
+          • <strong>Yếu tố Works:</strong> Lõi chữ W nằm gọn bên trong làm thanh ngang nâng đỡ, không còn cánh xòe ra ngoài.<br>
+          • <strong>DNA Vision119:</strong> Giữ trọn các dải ruy-băng quang học giao thoa màu Cyan sáng (`#7fccdf`) và Steel Teal (`#1b6e85`).
+        </p>
+      </div>
+
+      <!-- New A Dominant 2: 3D Crystal Shard Apex -->
+      <div style="background: rgba(14, 28, 48, 0.94); border: 1px solid rgba(127, 204, 223, 0.3); border-radius: 20px; padding: 22px; text-align: center;">
+        <img src="/images/ai_logo_hero_a.jpg" alt="A Dominant Crystal" style="width: 100%; max-width: 290px; border-radius: 14px; box-shadow: 0 12px 35px rgba(51, 170, 211, 0.35); margin-bottom: 14px;">
+        <h3 style="font-size: 17px; color: #ffffff; margin-bottom: 6px;">Bản A Chủ Đạo 2: Crystal Shard Apex</h3>
+        <p style="font-size: 12.5px; color: #94a3b8; line-height: 1.5; text-align: left;">
+          • <strong>Chữ A chủ đạo:</strong> Tháp chữ A nguyên khối dạng đa diện 3D vát cạnh tinh thể.<br>
+          • <strong>Yếu tố Works:</strong> Chữ W được điêu khắc nổi bật ở lòng trung tâm theo hướng mũi tên tiến bước.<br>
+          • <strong>DNA Vision119:</strong> Các mặt vát tinh thể phản chiếu ánh sáng cyan sắc sảo, công nghệ cao.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Preserved Backup Section -->
+    <div style="background: rgba(10, 20, 36, 0.7); border: 1px dashed rgba(127, 204, 223, 0.35); border-radius: 16px; padding: 18px 24px; display: flex; align-items: center; gap: 24px;">
+      <img src="/images/ai_logo_backup_2.jpg" alt="Bản 2 Dự Phòng" style="width: 80px; height: 80px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(127, 204, 223, 0.3);">
+      <div style="flex: 1;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+          <span style="font-size: 12px; font-weight: 700; color: #fbbf24; background: rgba(251, 191, 36, 0.15); padding: 2px 8px; border-radius: 6px;">ĐÃ LƯU DỰ PHÒNG</span>
+          <strong style="font-size: 15px; color: #ffffff;">Bản 2 Gốc (Geometric Ribbon Monogram)</strong>
+        </div>
+        <p style="font-size: 12.5px; color: #94a3b8; line-height: 1.4;">
+          Đã được lưu trữ an toàn tại hệ thống (<code style="color: #7fccdf;">web/images/ai_logo_backup_2.jpg</code>) để sẵn sàng sử dụng hoặc phục hồi bất cứ khi nào bạn muốn.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <h2 style="max-width: 1100px; margin: 0 auto 16px; font-size: 20px; font-weight: 700; color: #cbd5e1; display: flex; align-items: center; gap: 8px;">
+    <span>📐</span> Vector SVG Code Implementations (Sử dụng trực tiếp trong Web Code)
+  </h2>
+  <div class="grid">
+
+    <!-- ================= CONCEPT 1: A-W FACETED SYNERGY (RECOMMENDED) ================= -->
+    <div class="card recommended" id="card-concept-1">
+      <div class="card-rec-badge">Recommended ★</div>
+      <div class="logo-preview-box">
+        <!-- SVG CONCEPT 1: A + W MONOGRAM FACET (Vision119 DNA) -->
+        <svg viewBox="0 0 200 200" id="svg-concept-1">
+          <defs>
+            <!-- Facet Left Gradient (Primary Cyan) -->
+            <linearGradient id="c1-leg-left" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7fccdf"/>
+              <stop offset="40%" stop-color="#33aad3"/>
+              <stop offset="100%" stop-color="#1f8cae"/>
+            </linearGradient>
+            <!-- Facet Right Gradient (Deep Steel Teal) -->
+            <linearGradient id="c1-leg-right" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#33aad3"/>
+              <stop offset="50%" stop-color="#247f9a"/>
+              <stop offset="100%" stop-color="#14586d"/>
+            </linearGradient>
+            <!-- Central W Facet / Crossbar (Luminous Cyan) -->
+            <linearGradient id="c1-core-glow" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#33aad3"/>
+              <stop offset="60%" stop-color="#8ce1f4"/>
+              <stop offset="100%" stop-color="#b6f1fc"/>
+            </linearGradient>
+            <!-- Bottom W Base Chevron -->
+            <linearGradient id="c1-w-base" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#2ba4cc"/>
+              <stop offset="100%" stop-color="#145a6f"/>
+            </linearGradient>
+          </defs>
+
+          <!-- 1. Left Upward Leg of A (Primary Cyan) -->
+          <polygon points="100,22 40,168 68,168 100,88 100,22" fill="url(#c1-leg-left)"/>
+
+          <!-- 2. Right Downward Leg of A (Deep Steel Teal) -->
+          <polygon points="100,22 100,88 132,168 160,168" fill="url(#c1-leg-right)"/>
+
+          <!-- 3. Central Vision Facet: The Crossbar forming the upper crest of W -->
+          <polygon points="100,74 126,128 100,146 74,128" fill="url(#c1-core-glow)" opacity="0.95"/>
+
+          <!-- 4. Lower Interlocking 'W' Workflow Chevrons (Expressing "WORKS") -->
+          <!-- Left Wing of W -->
+          <polygon points="74,128 100,146 100,172 62,172" fill="url(#c1-w-base)"/>
+          <!-- Right Wing of W -->
+          <polygon points="126,128 100,146 100,172 138,172" fill="url(#c1-leg-right)" opacity="0.88"/>
+
+          <!-- 5. Optical Energy Core - Subtle Diamond Spark -->
+          <circle cx="100" cy="118" r="4.5" fill="#ffffff" filter="drop-shadow(0 0 6px #8ce1f4)"/>
+        </svg>
+      </div>
+
+      <div class="card-title">
+        <span>1. A-W Faceted Synergy</span>
+        <span style="font-size: 13px; color: #7fccdf;">Tối ưu nhất</span>
+      </div>
+      <div class="card-sub">Chữ A lồng ghép chữ W đa giác khối (Chuẩn DNA Vision119)</div>
+      <div class="card-desc">
+        <ul>
+          <li><strong>Hình tượng:</strong> Khung tổng thể tạo thành chữ <strong>A</strong> (Argos), phần lõi và chân đế lồng ghép chữ <strong>W</strong> (Works).</li>
+          <li><strong>Yếu tố Works:</strong> Mảng đa giác chữ W ở trung tâm tạo hình mũi tên hướng lên, tượng trưng cho quy trình vận hành và hiệu suất công việc.</li>
+          <li><strong>DNA Vision:</strong> Sử dụng đúng mảng tinh thể vát góc (Faceted Shards) và mảng giao thoa phát sáng như logo Vision.</li>
+        </ul>
+      </div>
+
+      <!-- Live Preview Context -->
+      <div class="live-demo-row">
+        <span class="live-demo-label">Topbar</span>
+        <div class="live-demo-item">
+          <svg viewBox="0 0 200 200">
+            <polygon points="100,22 40,168 68,168 100,88 100,22" fill="#33aad3"/>
+            <polygon points="100,22 100,88 132,168 160,168" fill="#1b6e85"/>
+            <polygon points="100,74 126,128 100,146 74,128" fill="#7fccdf"/>
+            <polygon points="74,128 100,146 100,172 62,172" fill="#247f9a"/>
+            <polygon points="126,128 100,146 100,172 138,172" fill="#165b6e"/>
+            <circle cx="100" cy="118" r="4" fill="#ffffff"/>
+          </svg>
+          <span class="live-demo-brand-name">ARGOS WORKS</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn-apply selected" onclick="applyConcept(1)">✓ Chọn Logo Concept 1 (A-W Synergy)</button>
+    </div>
+
+
+    <!-- ================= CONCEPT 2: MODULAR WORKFLOW ARCH ================= -->
+    <div class="card" id="card-concept-2">
+      <div class="logo-preview-box">
+        <!-- SVG CONCEPT 2: MODULAR WORKFLOW BLOCKS (A + Modular Works) -->
+        <svg viewBox="0 0 200 200" id="svg-concept-2">
+          <defs>
+            <linearGradient id="c2-grad-1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#80d0e3"/>
+              <stop offset="100%" stop-color="#33aad3"/>
+            </linearGradient>
+            <linearGradient id="c2-grad-2" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#33aad3"/>
+              <stop offset="100%" stop-color="#1b6b82"/>
+            </linearGradient>
+            <linearGradient id="c2-grad-3" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#93e4f5"/>
+              <stop offset="100%" stop-color="#33aad3"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Top Apex Block (Task Pinnacle) -->
+          <polygon points="100,24 134,74 100,94 66,74" fill="url(#c2-grad-1)"/>
+
+          <!-- Left Leg Block 1 (Data / Initiation) -->
+          <polygon points="62,80 96,100 76,146 42,126" fill="url(#c2-grad-3)"/>
+
+          <!-- Right Leg Block 1 (Execution) -->
+          <polygon points="138,80 158,126 124,146 104,100" fill="url(#c2-grad-2)"/>
+
+          <!-- Bottom Left Base Block -->
+          <polygon points="40,132 74,152 56,174 22,154" fill="#207a93"/>
+
+          <!-- Bottom Right Base Block -->
+          <polygon points="160,132 178,154 144,174 126,152" fill="#135263"/>
+
+          <!-- Intersecting Works Crossbar Block (Workflow Sync) -->
+          <polygon points="76,134 124,134 114,156 86,156" fill="url(#c2-grad-1)"/>
+          
+          <!-- Modern Center Negative Space forming dynamic Chevron -->
+          <polyline points="74,116 100,82 126,116" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="card-title">
+        <span>2. Modular Workflow Arch</span>
+      </div>
+      <div class="card-sub">Khối Module quy trình liên hoàn kết hợp chữ A</div>
+      <div class="card-desc">
+        <ul>
+          <li><strong>Hình tượng:</strong> Chữ <strong>A</strong> được xây dựng từ các khối công việc (Task Modules) kết nối chặt chẽ và ăn khớp với nhau.</li>
+          <li><strong>Yếu tố Works:</strong> Thể hiện các module nghiệp vụ liên kết (Jira, Quản lý, Sản phẩm, Tự động hóa) cùng hướng lên đỉnh thành công.</li>
+          <li><strong>DNA Vision:</strong> Sử dụng các góc vát đa diện sắc sảo và phối màu Cyan gradient đa tầng.</li>
+        </ul>
+      </div>
+
+      <div class="live-demo-row">
+        <span class="live-demo-label">Topbar</span>
+        <div class="live-demo-item">
+          <svg viewBox="0 0 200 200">
+            <polygon points="100,24 134,74 100,94 66,74" fill="#7fccdf"/>
+            <polygon points="62,80 96,100 76,146 42,126" fill="#33aad3"/>
+            <polygon points="138,80 158,126 124,146 104,100" fill="#1b6e85"/>
+            <polygon points="76,134 124,134 114,156 86,156" fill="#7fccdf"/>
+          </svg>
+          <span class="live-demo-brand-name">ARGOS WORKS</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn-apply" onclick="applyConcept(2)">Chọn Logo Concept 2 (Modular Arch)</button>
+    </div>
+
+
+    <!-- ================= CONCEPT 3: CYBER APEX & DYNAMIC W ================= -->
+    <div class="card" id="card-concept-3">
+      <div class="logo-preview-box">
+        <!-- SVG CONCEPT 3: CYBER APEX & DYNAMIC W -->
+        <svg viewBox="0 0 200 200" id="svg-concept-3">
+          <defs>
+            <linearGradient id="c3-grad-a" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="45%" stop-color="#7fccdf"/>
+              <stop offset="100%" stop-color="#33aad3"/>
+            </linearGradient>
+            <linearGradient id="c3-grad-w" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#33aad3"/>
+              <stop offset="100%" stop-color="#14586d"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Outer Crisp Chevron A Frame -->
+          <path d="M100 24 L162 168 L136 168 L100 78 L64 168 L38 168 Z" fill="url(#c3-grad-a)"/>
+
+          <!-- Dynamic Multi-fold 'W' Core inside A -->
+          <!-- Left V of W -->
+          <polygon points="64,168 84,116 100,148 90,168" fill="url(#c3-grad-w)"/>
+          <!-- Right V of W -->
+          <polygon points="136,168 116,116 100,148 110,168" fill="#1b6e85"/>
+
+          <!-- Glowing Floating Center Work Crystal -->
+          <polygon points="100,90 114,118 100,132 86,118" fill="#8ce1f4" filter="drop-shadow(0 0 10px #33aad3)"/>
+        </svg>
+      </div>
+
+      <div class="card-title">
+        <span>3. Cyber Apex & Dynamic W</span>
+      </div>
+      <div class="card-sub">Mũi tên công nghệ cao & chữ W tốc độ</div>
+      <div class="card-desc">
+        <ul>
+          <li><strong>Hình tượng:</strong> Khung chữ <strong>A</strong> thanh mảnh, sắc nét vươn cao với dải chữ <strong>W</strong> đan chéo vững chãi ở bên trong.</li>
+          <li><strong>Yếu tố Works:</strong> Các đường gấp khúc tạo nhịp chuyển động mạnh mẽ, dứt khoát như cỗ máy công việc hoạt động liên tục.</li>
+          <li><strong>DNA Vision:</strong> Điểm sáng tinh thể cyan ở trung tâm kế thừa trực tiếp từ biểu tượng camera giám sát thông minh của Vision.</li>
+        </ul>
+      </div>
+
+      <div class="live-demo-row">
+        <span class="live-demo-label">Topbar</span>
+        <div class="live-demo-item">
+          <svg viewBox="0 0 200 200">
+            <path d="M100 24 L162 168 L136 168 L100 78 L64 168 L38 168 Z" fill="#7fccdf"/>
+            <polygon points="64,168 84,116 100,148 90,168" fill="#33aad3"/>
+            <polygon points="136,168 116,116 100,148 110,168" fill="#1b6e85"/>
+            <polygon points="100,90 114,118 100,132 86,118" fill="#ffffff"/>
+          </svg>
+          <span class="live-demo-brand-name">ARGOS WORKS</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn-apply" onclick="applyConcept(3)">Chọn Logo Concept 3 (Cyber Apex)</button>
+    </div>
+
+  </div>
+
+  <script>
+    async function applyConcept(conceptId) {
+      const res = await fetch('/api/dev/apply-logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ concept: conceptId })
+      });
+      if(res.ok) {
+        alert('Đã áp dụng Concept ' + conceptId + ' vào hệ thống Argos Works!');
+      } else {
+        alert('Bạn có thể yêu cầu tôi áp dụng Concept ' + conceptId + ' trong chat nhé!');
+      }
+    }
+  </script>
+</body>
+</html>

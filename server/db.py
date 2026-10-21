@@ -1,0 +1,768 @@
+"""
+db.py — Dual-Engine Database Layer (SQLite + PostgreSQL)
+
+Auto-detects DATABASE_URL environment variable:
+  - If set and starts with 'postgresql' → PostgreSQL mode (psycopg2 connection pool)
+  - Otherwise → SQLite mode (thread-local connections, WAL mode)
+
+All public functions maintain identical signatures and return types.
+Consumer modules (14 files) require ZERO changes.
+"""
+
+import os
+import re
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Engine Detection
+# ---------------------------------------------------------------------------
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+ENGINE = "postgres" if DATABASE_URL and DATABASE_URL.startswith("postgresql") else "sqlite"
+
+logger.info(f"[db] Database engine: {ENGINE.upper()}")
+
+# ---------------------------------------------------------------------------
+# SQL Translation Layer (SQLite → PostgreSQL)
+# ---------------------------------------------------------------------------
+# Compiled regexes for performance (called on every query)
+_RE_QMARK = re.compile(r"\?")
+_RE_INSERT_OR_IGNORE = re.compile(
+    r"INSERT\s+OR\s+IGNORE\s+INTO\s+(\w+)\s*\(([^)]+)\)",
+    re.IGNORECASE,
+)
+_RE_INSERT_OR_REPLACE = re.compile(
+    r"INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)",
+    re.IGNORECASE,
+)
+_RE_STRFTIME_NOW = re.compile(
+    r"strftime\s*\(\s*'[^']*'\s*,\s*'now'\s*\)",
+    re.IGNORECASE,
+)
+_RE_PRAGMA = re.compile(r"^\s*PRAGMA\s+", re.IGNORECASE)
+
+
+def _translate_sql(sql):
+    """
+    Translates SQLite-dialect SQL to PostgreSQL-compatible SQL.
+    Only called when ENGINE == 'postgres'.
+    Safely replaces parameter '?' without breaking string literals containing '?'.
+    """
+    # 1. Skip PRAGMA statements entirely (SQLite-only)
+    if _RE_PRAGMA.match(sql):
+        return None  # Signal to skip
+
+    # 2. strftime('%Y-...','now') → CURRENT_TIMESTAMP
+    sql = _RE_STRFTIME_NOW.sub("CURRENT_TIMESTAMP", sql)
+
+    # 3. INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+    m = _RE_INSERT_OR_IGNORE.search(sql)
+    if m:
+        sql = _RE_INSERT_OR_IGNORE.sub(r"INSERT INTO \1 (\2)", sql)
+        # Append ON CONFLICT DO NOTHING if not already present
+        if "ON CONFLICT" not in sql.upper():
+            sql = sql.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
+
+    # 4. INSERT OR REPLACE → INSERT ... ON CONFLICT (pk) DO UPDATE
+    if re.search(r"INSERT\s+OR\s+REPLACE\s+INTO", sql, re.IGNORECASE):
+        sql = re.sub(r"INSERT\s+OR\s+REPLACE\s+INTO", "INSERT INTO", sql, flags=re.IGNORECASE)
+        if "ON CONFLICT" not in sql.upper():
+            sql = sql.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
+
+    # 5. ? → %s (parameter placeholders) - ONLY outside string literals
+    parts = re.split(r"('(?:''|[^'])*')", sql)
+    for i in range(0, len(parts), 2):
+        parts[i] = parts[i].replace("?", "%s")
+    sql = "".join(parts)
+
+    return sql
+
+
+def _translate_params(params):
+    """
+    Ensures params is always a tuple for psycopg2.
+    """
+    if params is None:
+        return ()
+    if isinstance(params, (list, tuple)):
+        return tuple(params)
+    return (params,)
+
+
+# ============================================================================
+# SQLite Engine
+# ============================================================================
+if ENGINE == "sqlite":
+    import sqlite3
+
+    _tls = threading.local()
+
+    def dict_factory(cursor, row):
+        """Row factory that converts rows into dictionaries."""
+        return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+
+    def get_db_path():
+        """Returns the absolute path to the database file."""
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_dir = os.path.join(base_dir, 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        return os.path.join(data_dir, 'argos.db')
+
+    def init_db():
+        """
+        Initializes the database: ensures the db file exists, applies schema.sql,
+        enables WAL mode, foreign keys, and sets a busy timeout.
+        """
+        db_path = get_db_path()
+        schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema.sql')
+
+        logger.info(f"Initializing SQLite database at {db_path}")
+
+        conn = sqlite3.connect(db_path, isolation_level=None)
+        try:
+            conn.execute("PRAGMA journal_mode = WAL;")
+            conn.execute("PRAGMA synchronous = NORMAL;")
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("PRAGMA busy_timeout = 5000;")
+
+            # Check and migrate columns on existing tables
+            cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            existing_tables = {row[0] for row in cur.fetchall()}
+
+            if "records" in existing_tables:
+                r_cols = {row[1] for row in conn.execute("PRAGMA table_info(records)").fetchall()}
+                if "status" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN status TEXT NOT NULL DEFAULT '진행';")
+                if "card_code" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN card_code TEXT NOT NULL DEFAULT '';")
+                if "start_date" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN start_date TEXT NOT NULL DEFAULT '';")
+                if "due_date" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN due_date TEXT NOT NULL DEFAULT '';")
+                if "is_scheduled" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN is_scheduled INTEGER NOT NULL DEFAULT 1;")
+                if "version" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN version INTEGER NOT NULL DEFAULT 1;")
+                if "updated_at" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';")
+                    conn.execute("UPDATE records SET updated_at = created_at WHERE updated_at = '' OR updated_at IS NULL;")
+
+                # Backfill work_date → start_date / due_date
+                rows = conn.execute("SELECT id, work_date, start_date, due_date FROM records").fetchall()
+                for row in rows:
+                    rec_id = row[0]
+                    w_date = (row[1] or "").strip()
+                    s_date = (row[2] or "").strip()
+                    d_date = (row[3] or "").strip()
+                    if (not s_date or not d_date) and w_date:
+                        if "~" in w_date:
+                            parts = [p.strip() for p in w_date.split("~")]
+                            s_val = parts[0]
+                            d_val = parts[1] if len(parts) > 1 and parts[1] else s_val
+                        else:
+                            s_val = w_date
+                            d_val = w_date
+                        conn.execute("UPDATE records SET start_date = ?, due_date = ? WHERE id = ?", (s_val, d_val, rec_id))
+
+            if "departments" in existing_tables:
+                d_cols = {row[1] for row in conn.execute("PRAGMA table_info(departments)").fetchall()}
+                if "local_prefix" not in d_cols:
+                    conn.execute("ALTER TABLE departments ADD COLUMN local_prefix TEXT NOT NULL DEFAULT '';")
+                if "jira_key" not in d_cols:
+                    conn.execute("ALTER TABLE departments ADD COLUMN jira_key TEXT NOT NULL DEFAULT '';")
+
+            if "products" in existing_tables:
+                p_cols = {row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()}
+                if "source" not in p_cols:
+                    conn.execute("ALTER TABLE products ADD COLUMN source TEXT NOT NULL DEFAULT 'internal';")
+                if "price" not in p_cols:
+                    conn.execute("ALTER TABLE products ADD COLUMN price INTEGER DEFAULT 0;")
+                if "currency" not in p_cols:
+                    conn.execute("ALTER TABLE products ADD COLUMN currency TEXT NOT NULL DEFAULT 'KRW';")
+
+                r_cols = {row[1] for row in conn.execute("PRAGMA table_info(records)").fetchall()} if "records" in existing_tables else set()
+                if "records" in existing_tables and "is_private" not in r_cols:
+                    conn.execute("ALTER TABLE records ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;")
+
+            if "users" in existing_tables:
+                u_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+                if "username" not in u_cols:
+                    conn.execute("ALTER TABLE users ADD COLUMN username TEXT NOT NULL DEFAULT '';")
+                if "role" not in u_cols:
+                    conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member';")
+                    conn.execute("UPDATE users SET role = 'admin' WHERE is_admin = 1;")
+                if "disabled" not in u_cols:
+                    conn.execute("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0;")
+                if "status" not in u_cols:
+                    conn.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active';")
+                if "avatar_url" not in u_cols:
+                    conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT NOT NULL DEFAULT '';")
+
+            if os.path.exists(schema_path):
+                with open(schema_path, 'r', encoding='utf-8') as f:
+                    schema_script = f.read()
+                conn.executescript(schema_script)
+                logger.info("Schema applied successfully.")
+
+                conn.execute("""
+                    INSERT OR IGNORE INTO license_info (id, customer_name, license_key, max_seats, expiry_date, modules_json, is_active)
+                    VALUES (1, 'Argos Enterprise Trial', 'ARGOS-TRIAL-COMMERCIAL-2026', 25, '2099-12-31', '["canvas","rag","jira","pim","schedule","audit"]', 1);
+                """)
+
+                conn.execute("""
+                    INSERT OR IGNORE INTO schema_migrations (version, name)
+                    VALUES (1, 'v2.0_baseline_enterprise_security');
+                """)
+
+                # Migration v2: Unique indexes on users (username, email) to prevent race conditions
+                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users(username) WHERE username != '';")
+                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email != '';")
+                conn.execute("""
+                    INSERT OR IGNORE INTO schema_migrations (version, name)
+                    VALUES (2, 'v2.1_users_unique_constraints');
+                """)
+            else:
+                logger.warning(f"Schema file not found at {schema_path}")
+        except sqlite3.Error as e:
+            logger.error(f"Database initialization failed: {e}")
+            raise
+        finally:
+            conn.close()
+
+    def get_connection():
+        """Returns a thread-local database connection."""
+        if not hasattr(_tls, 'conn') or _tls.conn is None:
+            db_path = get_db_path()
+            conn = sqlite3.connect(db_path, check_same_thread=False)
+            conn.row_factory = dict_factory
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("PRAGMA busy_timeout = 5000;")
+            conn.execute("PRAGMA synchronous = NORMAL;")
+            # 8GB RAM Optimization: Allocate 64MB cache per thread and use RAM for temporary tables
+            conn.execute("PRAGMA cache_size = -64000;")  # 64MB memory cache
+            conn.execute("PRAGMA temp_store = MEMORY;")
+            _tls.conn = conn
+        return _tls.conn
+
+    def close_connection():
+        """Closes the thread-local database connection."""
+        if hasattr(_tls, 'conn') and _tls.conn is not None:
+            try:
+                _tls.conn.close()
+            except sqlite3.Error:
+                pass
+            finally:
+                _tls.conn = None
+
+    def query(sql, params=()):
+        """Executes a SELECT query and returns a list of dictionaries."""
+        conn = get_connection()
+        try:
+            cursor = conn.execute(sql, params)
+            return cursor.fetchall()
+        except sqlite3.Error as e:
+            logger.error(f"Error executing query: {sql}\nParams: {params}\nError: {e}")
+            raise
+
+    def get_one(sql, params=()):
+        """Executes a SELECT query and returns a single row as a dictionary, or None."""
+        conn = get_connection()
+        try:
+            cursor = conn.execute(sql, params)
+            return cursor.fetchone()
+        except sqlite3.Error as e:
+            logger.error(f"Error executing get_one: {sql}\nParams: {params}\nError: {e}")
+            raise
+
+    def execute(sql, params=()):
+        """Executes an INSERT, UPDATE, or DELETE query and returns the last inserted row id."""
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error(f"Error executing statement: {sql}\nParams: {params}\nError: {e}")
+            raise
+        finally:
+            cursor.close()
+
+    def execute_rowcount(sql, params=()):
+        """Executes an UPDATE or DELETE query and returns the number of modified rows."""
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
+            conn.commit()
+            return cursor.rowcount
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error(f"Error executing statement for rowcount: {sql}\nParams: {params}\nError: {e}")
+            raise
+        finally:
+            cursor.close()
+
+    def executemany(sql, params_list):
+        """Executes a batch INSERT/UPDATE/DELETE."""
+        conn = get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.executemany(sql, params_list)
+            conn.commit()
+            return cursor.rowcount
+        except sqlite3.Error as e:
+            conn.rollback()
+            logger.error(f"Error executing executemany: {sql}\nError: {e}")
+            raise
+        finally:
+            cursor.close()
+
+    _tls_tx = threading.local()
+
+    def transaction(fn):
+        """
+        Executes a function fn(conn) within a transaction.
+        Supports nested transactions safely via SAVEPOINTs and nesting depth tracking.
+        """
+        conn = get_connection()
+        depth = getattr(_tls_tx, 'depth', 0)
+        _tls_tx.depth = depth + 1
+
+        if depth == 0:
+            try:
+                conn.execute("BEGIN IMMEDIATE;")
+                result = fn(conn)
+                conn.commit()
+                return result
+            except Exception as e:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                logger.error(f"Transaction failed, rolled back: {e}")
+                raise
+            finally:
+                _tls_tx.depth = 0
+        else:
+            sp_name = f"sp_{depth}"
+            conn.execute(f"SAVEPOINT {sp_name};")
+            try:
+                result = fn(conn)
+                conn.execute(f"RELEASE SAVEPOINT {sp_name};")
+                return result
+            except Exception as e:
+                try:
+                    conn.execute(f"ROLLBACK TO SAVEPOINT {sp_name};")
+                except Exception:
+                    pass
+                logger.error(f"Nested transaction ({sp_name}) failed, rolled back: {e}")
+                raise
+            finally:
+                _tls_tx.depth = depth
+
+# ============================================================================
+# PostgreSQL Engine
+# ============================================================================
+else:
+    import psycopg2
+    import psycopg2.pool
+    import psycopg2.extras
+
+    # ---- Connection Pool (thread-safe) ----
+    _pool = None
+    _pool_lock = threading.Lock()
+
+    def _get_pool():
+        """Lazily initializes and returns the PostgreSQL connection pool."""
+        global _pool
+        if _pool is None or _pool.closed:
+            with _pool_lock:
+                if _pool is None or _pool.closed:
+                    # Sizing connection pool to match worker thread capacity (up to 128 workers)
+                    _pool = psycopg2.pool.ThreadedConnectionPool(
+                        minconn=10,
+                        maxconn=128,
+                        dsn=DATABASE_URL,
+                    )
+                    logger.info("[db/postgres] High-capacity pool created (min=10, max=128)")
+        return _pool
+
+    def get_db_path():
+        """
+        Returns DATABASE_URL for PostgreSQL mode.
+        Maintained for backward compatibility (backup_manager imports this).
+        """
+        return DATABASE_URL
+
+    def init_db():
+        """
+        Initializes the PostgreSQL database with versioned migration check.
+        Ensures baseline schema is applied only when needed and tracked in schema_migrations.
+        """
+        schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'schema.postgres.sql')
+        logger.info(f"[db/postgres] Initializing database with schema: {schema_path}")
+
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            conn.autocommit = True
+            cur = conn.cursor()
+
+            # 1. Ensure schema_migrations table exists
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version INTEGER PRIMARY KEY,
+                    name VARCHAR(128) NOT NULL,
+                    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            cur.execute("SELECT version FROM schema_migrations;")
+            applied_versions = {row[0] for row in cur.fetchall()}
+
+            # Migration 1: Baseline enterprise postgres schema
+            if 1 not in applied_versions and os.path.exists(schema_path):
+                with open(schema_path, 'r', encoding='utf-8') as f:
+                    schema_script = f.read()
+                cur.execute(schema_script)
+                cur.execute("""
+                    INSERT INTO schema_migrations (version, name)
+                    VALUES (1, 'v2.0_baseline_enterprise_postgres')
+                    ON CONFLICT (version) DO NOTHING;
+                """)
+                logger.info("[db/postgres] Migration v1 (baseline) applied.")
+            else:
+                logger.info("[db/postgres] Migration v1 already applied or schema missing. Skipping baseline.")
+
+            # Migration 2: Unique indexes on users (username, email) to prevent race conditions
+            if 2 not in applied_versions:
+                cur.execute("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users(username) WHERE username != '';
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email != '';
+                    INSERT INTO schema_migrations (version, name)
+                    VALUES (2, 'v2.1_users_unique_constraints')
+                    ON CONFLICT (version) DO NOTHING;
+                """)
+                logger.info("[db/postgres] Migration v2 (users unique constraints) applied.")
+
+            # Seed default license info safely
+            cur.execute("""
+                INSERT INTO license_info (id, customer_name, license_key, max_seats, expiry_date, modules_json, is_active)
+                VALUES (1, 'Argos Enterprise Trial', 'ARGOS-TRIAL-COMMERCIAL-2026', 25, '2099-12-31',
+                        '["canvas","rag","jira","pim","schedule","audit"]', 1)
+                ON CONFLICT (id) DO NOTHING;
+            """)
+
+            cur.close()
+        except psycopg2.Error as e:
+            logger.error(f"[db/postgres] Database initialization failed: {e}")
+            raise
+        finally:
+            conn.autocommit = False
+            pool.putconn(conn)
+
+    def get_connection():
+        """
+        Returns a connection from the pool.
+        NOTE: In PostgreSQL mode, callers should NOT hold connections long-term.
+        This exists for backward compatibility with transaction().
+        """
+        return _get_pool().getconn()
+
+    def close_connection():
+        """
+        Returns connection to pool (does NOT close it).
+        In PostgreSQL mode, this is a no-op for safety —
+        connections are managed per-operation.
+        """
+        pass
+
+    def _dict_cursor(conn):
+        """Creates a cursor that returns dictionaries."""
+        return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    def query(sql, params=()):
+        """Executes a SELECT query and returns a list of dictionaries."""
+        translated = _translate_sql(sql)
+        if translated is None:
+            return []  # PRAGMA → skip
+        params = _translate_params(params)
+
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            cur = _dict_cursor(conn)
+            cur.execute(translated, params)
+            rows = cur.fetchall()
+            cur.close()
+            # Convert RealDictRow to plain dict for compatibility
+            return [dict(r) for r in rows]
+        except psycopg2.Error as e:
+            conn.rollback()
+            logger.error(f"[db/postgres] Error executing query: {sql}\nTranslated: {translated}\nParams: {params}\nError: {e}")
+            raise
+        finally:
+            pool.putconn(conn)
+
+    def get_one(sql, params=()):
+        """Executes a SELECT query and returns a single row as a dictionary, or None."""
+        translated = _translate_sql(sql)
+        if translated is None:
+            return None
+        params = _translate_params(params)
+
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            cur = _dict_cursor(conn)
+            cur.execute(translated, params)
+            row = cur.fetchone()
+            cur.close()
+            return dict(row) if row else None
+        except psycopg2.Error as e:
+            conn.rollback()
+            logger.error(f"[db/postgres] Error executing get_one: {sql}\nTranslated: {translated}\nParams: {params}\nError: {e}")
+            raise
+        finally:
+            pool.putconn(conn)
+
+    def execute(sql, params=()):
+        """Executes an INSERT, UPDATE, or DELETE query and returns the last inserted row id."""
+        translated = _translate_sql(sql)
+        if translated is None:
+            return 0
+        params = _translate_params(params)
+
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            cur = conn.cursor()
+            # Try to get RETURNING id for INSERT statements
+            sql_upper = translated.strip().upper()
+            if sql_upper.startswith("INSERT") and "RETURNING" not in sql_upper:
+                # Append RETURNING to get lastrowid equivalent
+                exec_sql = translated.rstrip().rstrip(";") + " RETURNING id"
+                try:
+                    cur.execute(exec_sql, params)
+                    row = cur.fetchone()
+                    conn.commit()
+                    cur.close()
+                    return row[0] if row else 0
+                except psycopg2.Error:
+                    # Table might not have 'id' column — fall back to normal execute
+                    conn.rollback()
+                    cur = conn.cursor()
+                    cur.execute(translated, params)
+                    conn.commit()
+                    cur.close()
+                    return 0
+            else:
+                cur.execute(translated, params)
+                conn.commit()
+                cur.close()
+                return 0
+        except psycopg2.Error as e:
+            conn.rollback()
+            logger.error(f"[db/postgres] Error executing statement: {sql}\nTranslated: {translated}\nParams: {params}\nError: {e}")
+            raise
+        finally:
+            pool.putconn(conn)
+
+    def execute_rowcount(sql, params=()):
+        """Executes an UPDATE or DELETE query and returns the number of modified rows."""
+        translated = _translate_sql(sql)
+        if translated is None:
+            return 0
+        params = _translate_params(params)
+
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            cur = conn.cursor()
+            cur.execute(translated, params)
+            rowcount = cur.rowcount
+            conn.commit()
+            cur.close()
+            return rowcount
+        except psycopg2.Error as e:
+            conn.rollback()
+            logger.error(f"[db/postgres] Error executing statement for rowcount: {sql}\nTranslated: {translated}\nParams: {params}\nError: {e}")
+            raise
+        finally:
+            pool.putconn(conn)
+
+    def executemany(sql, params_list):
+        """Executes a batch INSERT/UPDATE/DELETE using psycopg2's optimized execute_batch."""
+        translated = _translate_sql(sql)
+        if translated is None:
+            return 0
+        params_list = [_translate_params(p) for p in params_list]
+
+        pool = _get_pool()
+        conn = pool.getconn()
+        try:
+            cur = conn.cursor()
+            psycopg2.extras.execute_batch(cur, translated, params_list)
+            rowcount = cur.rowcount
+            conn.commit()
+            cur.close()
+            return rowcount
+        except psycopg2.Error as e:
+            conn.rollback()
+            logger.error(f"[db/postgres] Error executing executemany: {sql}\nTranslated: {translated}\nError: {e}")
+            raise
+        finally:
+            pool.putconn(conn)
+
+    _tls_tx_pg = threading.local()
+
+    def transaction(fn):
+        """
+        Executes a function fn(conn) within a transaction.
+        The conn passed to fn is a TransactionProxy that auto-translates SQL.
+        Supports nested transactions via SAVEPOINTs and thread-local connection tracking.
+        """
+        depth = getattr(_tls_tx_pg, 'depth', 0)
+        if depth == 0:
+            pool = _get_pool()
+            conn = pool.getconn()
+            _tls_tx_pg.conn = conn
+            _tls_tx_pg.depth = 1
+            try:
+                proxy = _TransactionProxy(conn)
+                result = fn(proxy)
+                conn.commit()
+                return result
+            except Exception as e:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                logger.error(f"[db/postgres] Transaction failed, rolled back: {e}")
+                raise
+            finally:
+                _tls_tx_pg.depth = 0
+                _tls_tx_pg.conn = None
+                pool.putconn(conn)
+        else:
+            conn = _tls_tx_pg.conn
+            _tls_tx_pg.depth = depth + 1
+            sp_name = f"sp_{depth}"
+            cur = conn.cursor()
+            cur.execute(f"SAVEPOINT {sp_name};")
+            cur.close()
+            try:
+                proxy = _TransactionProxy(conn)
+                result = fn(proxy)
+                cur = conn.cursor()
+                cur.execute(f"RELEASE SAVEPOINT {sp_name};")
+                cur.close()
+                return result
+            except Exception as e:
+                try:
+                    cur = conn.cursor()
+                    cur.execute(f"ROLLBACK TO SAVEPOINT {sp_name};")
+                    cur.close()
+                except Exception:
+                    pass
+                logger.error(f"[db/postgres] Nested transaction ({sp_name}) failed, rolled back: {e}")
+                raise
+            finally:
+                _tls_tx_pg.depth = depth
+
+    class _TransactionProxy:
+        """
+        Wraps a psycopg2 connection to provide SQLite-compatible interface
+        for transaction(fn) callbacks. Consumer code calls conn.execute(sql, params)
+        and conn.cursor() — this proxy translates SQL transparently.
+        """
+        def __init__(self, real_conn):
+            self._conn = real_conn
+
+        def execute(self, sql, params=()):
+            translated = _translate_sql(sql)
+            if translated is None:
+                return _DummyCursor()
+            params = _translate_params(params)
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(translated, params)
+            return cur
+
+        def cursor(self):
+            return _TransactionCursorProxy(self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor))
+
+        def commit(self):
+            pass  # Managed by outer transaction()
+
+        def rollback(self):
+            pass  # Managed by outer transaction()
+
+    class _TransactionCursorProxy:
+        """
+        Wraps a psycopg2 cursor to translate SQL in transaction contexts
+        where consumer code calls cur.execute(sql, params) directly.
+        """
+        def __init__(self, real_cursor):
+            self._cur = real_cursor
+
+        def execute(self, sql, params=()):
+            translated = _translate_sql(sql)
+            if translated is None:
+                return self
+            params = _translate_params(params)
+            self._cur.execute(translated, params)
+            return self
+
+        def executemany(self, sql, params_list):
+            translated = _translate_sql(sql)
+            if translated is None:
+                return self
+            params_list = [_translate_params(p) for p in params_list]
+            psycopg2.extras.execute_batch(self._cur, translated, params_list)
+            return self
+
+        def fetchall(self):
+            rows = self._cur.fetchall()
+            return [dict(r) for r in rows]
+
+        def fetchone(self):
+            row = self._cur.fetchone()
+            return dict(row) if row else None
+
+        def close(self):
+            self._cur.close()
+
+        @property
+        def lastrowid(self):
+            # psycopg2 doesn't have lastrowid; return 0 for safety
+            return 0
+
+        @property
+        def rowcount(self):
+            return self._cur.rowcount
+
+        @property
+        def description(self):
+            return self._cur.description
+
+    class _DummyCursor:
+        """Returned when a PRAGMA or other skipped SQL is encountered."""
+        def fetchall(self):
+            return []
+        def fetchone(self):
+            return None
+        def close(self):
+            pass
+        @property
+        def lastrowid(self):
+            return 0
+        @property
+        def rowcount(self):
+            return 0
+        @property
+        def description(self):
+            return None

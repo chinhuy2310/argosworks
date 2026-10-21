@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Exact Vision119 Design Language: Solid flat geometric facets with negative space cuts -->
+  <!-- Left Leg of A: Cyan (#169ed6) -->
+  <polygon points="100,24 76,24 28,175 58,175 88,78" fill="#169ed6"/>
+
+  <!-- Right Leg of A: Deep Ocean Steel (#1e88a9) -->
+  <polygon points="100,24 124,24 172,175 142,175 112,78" fill="#1e88a9"/>
+
+  <!-- Inverted Triangle: Soft Sky (#76cee5) - identical to Vision center triangle -->
+  <polygon points="86,70 114,70 100,98" fill="#76cee5"/>
+
+  <!-- Upward Triangle / W Peak: Vivid Azure (#0094d8) -->
+  <polygon points="100,104 80,146 120,146" fill="#0094d8"/>
+
+  <!-- Lower Left W-Facet (Deep Ocean Teal #1e88a9) -->
+  <polygon points="62,175 78,148 94,175" fill="#1e88a9"/>
+
+  <!-- Lower Right W-Facet (Vivid Cyan #169ed6) -->
+  <polygon points="106,175 122,148 138,175" fill="#169ed6"/>
+</svg>

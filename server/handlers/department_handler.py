@@ -1,0 +1,148 @@
+import json
+import re
+import time
+from services.data_store import read_departments, write_departments, update_department, delete_department, _save_lock
+from services.auth import is_admin_user, is_manager_or_admin
+from utils.logging import access_log
+
+def _require_dept_admin(handler, ip, action_name):
+    session = handler._get_session_or_401()
+    if session is None:
+        return None
+    if not is_manager_or_admin(session):
+        user_desc = f"{session.get('name')}|{session.get('email')}"
+        access_log(ip, f"forbidden_{action_name}", 403, user_desc)
+        handler._send_json(403, {
+            "ok": False,
+            "error": "관리자(Admin) 또는 부서장(Manager) 권한이 필요합니다.",
+            "forbidden": True
+        })
+        return None
+    return session
+
+# ---- /api/departments (POST) ----
+def handle_add_department(handler, raw_body, ip):
+    session = _require_dept_admin(handler, ip, "add_department")
+    if session is None:
+        return
+    try:
+        payload = json.loads(raw_body.decode("utf-8") or "{}")
+    except Exception:
+        handler._send_json(400, {"ok": False, "error": "잘못된 요청 본문"})
+        return
+
+    name = (payload.get("name") or "").strip()
+    local_prefix = (payload.get("localPrefix") or payload.get("local_prefix") or "").strip().upper()
+    jira_key = (payload.get("jiraKey") or payload.get("jira_key") or "").strip().upper()
+    custom_categories = (payload.get("customCategories") or payload.get("custom_categories") or "").strip()
+
+    if not name:
+        handler._send_json(400, {"ok": False, "error": "이름을 입력해주세요."})
+        return
+
+    with _save_lock:
+        depts = read_departments()
+        if any(d["name"].lower() == name.lower() for d in depts):
+            handler._send_json(200, {"ok": True, "added": False, "departments": depts})
+            return
+
+        # Generate id based on local_prefix if valid ascii, else timestamp
+        clean_prefix = re.sub(r'[^a-zA-Z0-9]', '', local_prefix).lower()
+        if clean_prefix and not any(d["id"] == clean_prefix for d in depts):
+            dept_id = clean_prefix
+        else:
+            dept_id = "dept_" + format(int(time.time() * 1000), "x")
+
+        color_index = (len(depts) % 6) + 1
+        depts.append({
+            "id": dept_id,
+            "name": name,
+            "colorIndex": color_index,
+            "localPrefix": local_prefix,
+            "jiraKey": jira_key,
+            "customCategories": custom_categories
+        })
+        write_departments(depts)
+
+        # Automatically link in cfg.jira.project_map if jira_key is provided
+        if jira_key and hasattr(handler, "cfg") and handler.cfg:
+            try:
+                handler.cfg.setdefault("jira", {}).setdefault("project_map", {})[dept_id] = {
+                    "project_key": jira_key,
+                    "issue_type": "Task"
+                }
+            except Exception:
+                pass
+
+    access_log(ip, "add_department", 200, f"{name} (prefix={local_prefix}, jira={jira_key})")
+    handler._send_json(200, {"ok": True, "added": True, "departments": read_departments()})
+
+
+# ---- /api/departments/delete (POST) ----
+def handle_delete_department(handler, raw_body, ip):
+    session = _require_dept_admin(handler, ip, "delete_department")
+    if session is None:
+        return
+    try:
+        payload = json.loads(raw_body.decode("utf-8") or "{}")
+    except Exception:
+        handler._send_json(400, {"ok": False, "error": "잘못된 요청 본문"})
+        return
+
+    dept_id = (payload.get("id") or "").strip()
+    if not dept_id:
+        handler._send_json(400, {"ok": False, "error": "부서 ID가 필요합니다."})
+        return
+
+    with _save_lock:
+        ok, err = delete_department(dept_id)
+        if not ok:
+            handler._send_json(400, {"ok": False, "error": err})
+            return
+
+    access_log(ip, "delete_department", 200, dept_id)
+    handler._send_json(200, {"ok": True, "departments": read_departments()})
+
+
+# ---- /api/departments/update (POST) ----
+def handle_update_department(handler, raw_body, ip):
+    session = _require_dept_admin(handler, ip, "update_department")
+    if session is None:
+        return
+    try:
+        payload = json.loads(raw_body.decode("utf-8") or "{}")
+    except Exception:
+        handler._send_json(400, {"ok": False, "error": "잘못된 요청 본문"})
+        return
+
+    dept_id = (payload.get("id") or "").strip()
+    name = (payload.get("name") or "").strip()
+    local_prefix = (payload.get("localPrefix") or payload.get("local_prefix") or "").strip().upper()
+    jira_key = (payload.get("jiraKey") or payload.get("jira_key") or "").strip().upper()
+    custom_categories = (payload.get("customCategories") or payload.get("custom_categories") or "").strip()
+
+    if not dept_id:
+        handler._send_json(400, {"ok": False, "error": "카테고리 ID가 필요합니다."})
+        return
+    if not name:
+        handler._send_json(400, {"ok": False, "error": "카테고리 이름을 입력해주세요."})
+        return
+
+    with _save_lock:
+        ok, err = update_department(dept_id, name, local_prefix, jira_key, custom_categories)
+        if not ok:
+            handler._send_json(400, {"ok": False, "error": err})
+            return
+
+        # Update jira project_map if configured
+        if jira_key and hasattr(handler, "cfg") and handler.cfg:
+            try:
+                handler.cfg.setdefault("jira", {}).setdefault("project_map", {})[dept_id] = {
+                    "project_key": jira_key,
+                    "issue_type": "Task"
+                }
+            except Exception:
+                pass
+
+    access_log(ip, "update_department", 200, f"{dept_id}: {name} (prefix={local_prefix}, jira={jira_key})")
+    handler._send_json(200, {"ok": True, "departments": read_departments()})
