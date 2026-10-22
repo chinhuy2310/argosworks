@@ -1,5 +1,6 @@
 import json
 import os
+import ipaddress
 import mimetypes
 import tempfile
 import traceback
@@ -38,6 +39,66 @@ PUBLIC_API_WHITELIST = {
     # Public Workspace UI Branding
     "/api/workspace-config",
 }
+
+# ---------------------------------------------------------------------------
+# Reverse-proxy trust
+# ---------------------------------------------------------------------------
+# TRUSTED_PROXIES is a comma separated list of IPs / CIDRs (hostnames are also
+# accepted for backwards compatibility) whose X-Forwarded-For / X-Real-IP
+# headers are honoured. Only the *immediate* TCP peer is matched against this
+# list, so a workstation that talks to ARGOS directly can never spoof its IP.
+#   127.0.0.1 / ::1   - reverse proxy running on the same host
+#   172.16.0.0/12     - default Docker bridge / compose networks (Caddy)
+# Deployments fronted by a proxy on another subnet MUST extend this value.
+# "0.0.0.0" (trust every peer, therefore spoofable) exists only for isolated
+# lab setups and is never enabled implicitly.
+DEFAULT_TRUSTED_PROXIES = "127.0.0.1,::1,172.16.0.0/12"
+
+_TRUSTED_PROXY_CACHE = {}
+
+
+def _parse_trusted_proxies(raw):
+    exact, networks, trust_any = set(), [], False
+    for item in (raw or "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if item == "0.0.0.0":
+            trust_any = True
+            continue
+        try:
+            networks.append(ipaddress.ip_network(item, strict=False))
+        except ValueError:
+            exact.add(item.lower())
+    return frozenset(exact), tuple(networks), trust_any
+
+
+def get_trusted_proxies():
+    """Parsed TRUSTED_PROXIES, cached per raw configuration value."""
+    raw = os.environ.get("TRUSTED_PROXIES", DEFAULT_TRUSTED_PROXIES)
+    cached = _TRUSTED_PROXY_CACHE.get(raw)
+    if cached is None:
+        cached = _parse_trusted_proxies(raw)
+        _TRUSTED_PROXY_CACHE.clear()
+        _TRUSTED_PROXY_CACHE[raw] = cached
+    return cached
+
+
+def is_trusted_proxy_peer(peer):
+    """True when *peer* (IP or host string) is an explicitly configured proxy."""
+    exact, networks, trust_any = get_trusted_proxies()
+    if trust_any:
+        return True
+    if not peer:
+        return False
+    if peer.lower() in exact:
+        return True
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    return any(addr in net for net in networks)
+
 
 class ArgosHandler(BaseHTTPRequestHandler):
     server_version = "ArgosServer/2.0"
@@ -92,42 +153,43 @@ class ArgosHandler(BaseHTTPRequestHandler):
 
     def _extract_client_ip(self):
         """
-        Extract real client IP considering trusted reverse proxy headers (X-Forwarded-For).
-        Only trusts X-Forwarded-For / X-Real-IP if direct connection peer is in TRUSTED_PROXIES.
+        Resolve the real client IP.
+
+        X-Forwarded-For / X-Real-IP are honoured only when the direct TCP peer is
+        listed in TRUSTED_PROXIES (IP, CIDR or hostname). The header chain is then
+        walked right-to-left and the first untrusted, syntactically valid address
+        wins, so a client-supplied "X-Forwarded-For: 1.2.3.4" prefix cannot spoof
+        the rate-limiter bucket or the IP recorded in the audit log.
         """
-        peer_ip = ""
         try:
             peer_ip = self.client_address[0]
         except Exception:
             peer_ip = self.address_string()
 
-        # Defaults trust local connections as well as Docker bridge/container networks (caddy reverse proxy)
-        trusted_proxies_cfg = os.environ.get("TRUSTED_PROXIES", "127.0.0.1,::1,localhost,caddy,argos-proxy")
-        trusted_proxies = {p.strip() for p in trusted_proxies_cfg.split(",") if p.strip()}
+        if not is_trusted_proxy_peer(peer_ip):
+            return peer_ip
 
-        # Check if direct peer IP or peer hostname matches trusted proxies or Docker private subnet (172.16.0.0/12)
-        is_trusted = (peer_ip in trusted_proxies or "0.0.0.0" in trusted_proxies)
-        if not is_trusted:
+        candidates = []
+        xff = self.headers.get("X-Forwarded-For")
+        if xff:
+            candidates.extend(part.strip() for part in xff.split(",") if part.strip())
+        real_ip = (self.headers.get("X-Real-IP") or "").strip()
+        if real_ip:
+            candidates.append(real_ip)
+
+        valid = []
+        for candidate in candidates:
             try:
-                import ipaddress
-                ip_obj = ipaddress.ip_address(peer_ip)
-                # Docker internal networks are private IPs (172.16.0.0 - 172.31.255.255, 10.0.0.0/8, 192.168.0.0/16)
-                if ip_obj.is_private:
-                    is_trusted = True
-            except Exception:
-                pass
+                valid.append(str(ipaddress.ip_address(candidate)))
+            except ValueError:
+                continue
+        if not valid:
+            return peer_ip
 
-        if is_trusted:
-            xff = self.headers.get("X-Forwarded-For")
-            if xff:
-                parts = [p.strip() for p in xff.split(",")]
-                if parts and parts[0]:
-                    return parts[0]
-            real_ip = self.headers.get("X-Real-IP")
-            if real_ip and real_ip.strip():
-                return real_ip.strip()
-
-        return peer_ip
+        for candidate in reversed(valid):
+            if not is_trusted_proxy_peer(candidate):
+                return candidate
+        return valid[0]
 
     def _extract_token(self):
         """

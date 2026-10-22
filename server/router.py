@@ -1170,7 +1170,7 @@ def handle_post_issue_comment(handler, raw_body, ip):
         local_rec = get_record_by_id(int(clean_id))
     if not local_rec:
         from db import query
-        found = query("SELECT id FROM records WHERE card_code = ? COLLATE NOCASE", (issue_key.strip(),))
+        found = query("SELECT id FROM records WHERE LOWER(card_code) = LOWER(?)", (issue_key.strip(),))
         if found:
             local_rec = get_record_by_id(found[0]["id"])
 
@@ -1270,7 +1270,7 @@ def handle_post_issue_transition(handler, raw_body, ip):
         local_rec = get_record_by_id(int(clean_id))
     if not local_rec:
         from db import query
-        found = query("SELECT id FROM records WHERE card_code = ? COLLATE NOCASE", (issue_key.strip(),))
+        found = query("SELECT id FROM records WHERE LOWER(card_code) = LOWER(?)", (issue_key.strip(),))
         if found:
             local_rec = get_record_by_id(found[0]["id"])
 
@@ -2692,7 +2692,7 @@ def match_post(path):
         return handle_account_register
     elif path in ("/api/account/login", "/api/auth/login"):
         return handle_account_login
-
+    elif path in ("/api/account/logout", "/api/auth/logout"):
         return handle_account_logout
     elif path in ("/api/account/logout-all", "/api/auth/logout-all"):
         return handle_account_logout_all
