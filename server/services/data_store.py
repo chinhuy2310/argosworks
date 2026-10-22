@@ -488,26 +488,29 @@ def get_next_card_code(dept_id, dept_prefix="REC"):
         cur = conn.cursor()
         cur.execute("SELECT last_seq FROM card_sequences WHERE dept_id = ?", (dept_id,))
         row = cur.fetchone()
-        if row is None:
-            # 기존 레코드에서 가장 높은 번호 추출하여 시퀀스 초기화
-            cur.execute("SELECT card_code FROM records WHERE dept_id = ?", (dept_id,))
-            max_num = 0
-            for r in cur.fetchall():
-                cc = r[0] if isinstance(r, (list, tuple)) else r["card_code"]
-                if cc and "-" in cc:
-                    parts = cc.split("-")
-                    if len(parts) >= 2 and parts[-1].isdigit():
-                        max_num = max(max_num, int(parts[-1]))
-            if max_num == 0:
-                c_row = cur.execute("SELECT count(*) FROM records WHERE dept_id = ?", (dept_id,)).fetchone()
-                max_num = c_row[0] if c_row else 0
-            cur.execute("INSERT OR REPLACE INTO card_sequences(dept_id, last_seq) VALUES (?, ?)", (dept_id, max_num))
-            last_seq = max_num
-        else:
-            last_seq = row[0] if isinstance(row, (list, tuple)) else row["last_seq"]
+        last_seq = 0 if row is None else (row[0] if isinstance(row, (list, tuple)) else row["last_seq"])
 
-        next_seq = last_seq + 1
-        cur.execute("UPDATE card_sequences SET last_seq = ? WHERE dept_id = ?", (next_seq, dept_id))
+        # 기존 레코드에서 실제 사용된 가장 높은 번호와 대조하여 항상 더 큰 번호로 채번
+        cur.execute("SELECT card_code FROM records WHERE dept_id = ?", (dept_id,))
+        max_num = last_seq
+        for r in cur.fetchall():
+            cc = r[0] if isinstance(r, (list, tuple)) else r["card_code"]
+            if cc and "-" in cc:
+                parts = cc.split("-")
+                if len(parts) >= 2 and parts[-1].isdigit():
+                    max_num = max(max_num, int(parts[-1]))
+
+        next_seq = max(last_seq, max_num) + 1
+
+        # 안전장치: 혹시라도 이미 존재하는 코드인 경우 중복이 없을 때까지 번호 자동 증가
+        while True:
+            candidate = f"{prefix}-{next_seq}"
+            exists = cur.execute("SELECT 1 FROM records WHERE card_code = ? LIMIT 1", (candidate,)).fetchone()
+            if not exists:
+                break
+            next_seq += 1
+
+        cur.execute("INSERT OR REPLACE INTO card_sequences(dept_id, last_seq) VALUES (?, ?)", (dept_id, next_seq))
         return f"{prefix}-{next_seq}"
 
     return transaction(_do)
