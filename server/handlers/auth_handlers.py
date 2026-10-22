@@ -281,28 +281,9 @@ def handle_account_logout(handler, raw_body, ip):
     logout_cookie_hdr = handler._make_logout_cookie_header()
     handler._send_json(200, {"ok": True}, extra_headers=[logout_cookie_hdr])
 
-def handle_account_logout_get(handler, parsed, ip):
-    """GET /api/account/logout — 브라우저 직접 접근 또는 Fallback 로그아웃"""
-    session = handler._get_session_optional()
-    if session:
-        from services.audit_logger import log_audit
-        log_audit(session=session, ip=ip, action="LOGOUT", target_type="auth", target_id=session.get("name"))
-    token = handler._extract_token()
-    if token:
-        try:
-            from services.auth import delete_session
-            delete_session(token)
-        except Exception:
-            pass
-    logout_cookie_hdr = handler._make_logout_cookie_header()
-    accept = handler.headers.get("Accept", "")
-    if "application/json" in accept:
-        handler._send_json(200, {"ok": True}, extra_headers=[logout_cookie_hdr])
-    else:
-        handler.send_response(302)
-        handler.send_header("Location", "/login")
-        handler.send_header(logout_cookie_hdr[0], logout_cookie_hdr[1])
-        handler.end_headers()
+# NOTE: GET /api/account/logout intentionally has no handler and no route.
+# Logout is POST-only so a link or <img> tag cannot terminate the session
+# (CSRF logout); the GET branch that used to live here was removed.
 
 # ---- /api/account/logout-all (POST) — 모든 기기에서 세션 강제 만료 ----
 def handle_account_logout_all(handler, raw_body, ip):

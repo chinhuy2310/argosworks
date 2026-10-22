@@ -2528,7 +2528,7 @@ def handle_post_admin_user_reject(handler, raw_body, ip):
 from handlers.auth_handlers import (
     handle_account_check, handle_account_register, handle_account_login,
     handle_account_logout, handle_account_logout_all, handle_account_update_profile,
-    handle_account_me, handle_account_logout_get, handle_account_csrf
+    handle_account_me, handle_account_csrf
 )
 from handlers.schedule_handlers import handle_schedule_create, handle_schedule_update, handle_schedule_delete
 from handlers.product_handlers import (
