@@ -211,6 +211,7 @@ def find_record_by_key_or_code(key_or_code):
            FROM records r
            LEFT JOIN record_jira rj ON r.id = rj.record_id
            WHERE UPPER(r.card_code) = ? OR UPPER(rj.jira_key) = ? OR UPPER(r.card_code) = ? OR UPPER(rj.jira_key) = ?
+           ORDER BY r.id DESC
            LIMIT 1""",
         (raw.upper(), raw.upper(), clean, clean)
     )

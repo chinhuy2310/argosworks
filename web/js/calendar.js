@@ -2148,6 +2148,7 @@ document.addEventListener("dragstart", function(e){
       draggedItemData = {
         type: "sched_chip",
         eventId: evId,
+        recordId: found.recordId || (found.source === "local" ? found.id : null),
         cardCode: cardCode,
         isLocal: isLocal,
         source: found.source,
@@ -2321,14 +2322,15 @@ document.addEventListener("drop", function(e){
   if(data.type === "task_card"){
     assignTaskToDate(data.taskId, targetDate);
   } else if(data.type === "sched_chip"){
-    if(data.isLocal || data.cardCode){
+    if(data.isLocal || data.cardCode || data.recordId){
       var newEnd = targetDate;
       if(data.dayDiff && data.dayDiff > 0){
         var nD = parseDateYMD(targetDate);
         nD.setDate(nD.getDate() + data.dayDiff);
         newEnd = formatYMD(nD);
       }
-      assignTaskToDate(data.cardCode || data.eventId, targetDate, newEnd);
+      var targetId = data.recordId || data.cardCode || data.eventId;
+      assignTaskToDate(targetId, targetDate, newEnd);
     } else {
       rescheduleCalendarEvent(data.eventId, targetDate);
     }

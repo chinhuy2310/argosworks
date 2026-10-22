@@ -635,10 +635,11 @@ def handle_get_schedule(handler, parsed, ip):
             })
 
         # 날짜(시작일 또는 마감일)가 지정되고 is_scheduled가 True인 카드만 달력 이벤트로 표시
-        if s_date and is_sched and str(code).upper() not in seen_card_codes:
-            seen_card_codes.add(str(code).upper())
+        rec_ident = f"rec-{r.get('id')}"
+        if s_date and is_sched and rec_ident not in seen_card_codes:
+            seen_card_codes.add(rec_ident)
             all_events.append({
-                "id": f"rec-{code}",
+                "id": rec_ident,
                 "recordId": r.get("id"),
                 "ownerKey": norm_member_key(assignee, org),
                 "ownerName": assignee,
