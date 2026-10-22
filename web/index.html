@@ -479,7 +479,7 @@
               <button type="button" id="syncBtn" class="choivis-btn-sync" data-i18n-title="filter.sync_jira" data-i18n="filter.sync_jira" title="Jira 동기화">🔄 Jira 동기화</button>
               <button type="button" id="btnExportExcel" class="choivis-btn-subtle" data-i18n-title="filter.export_excel" title="현재 업무 목록을 엑셀(.xlsx)로 다운로드">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>엑셀</span>
+                <span data-i18n="filter.btn_excel">엑셀</span>
               </button>
               <button type="button" id="btnCreateIssue" class="choivis-btn-green" data-i18n-title="filter.create_task" data-i18n="filter.create_task" title="새 작업 등록">➕ 새 작업 등록</button>
             </div>
@@ -501,19 +501,19 @@
             <!-- Table header for "All" department view: title + count badge + toggle button -->
             <div class="assignee-table-header" id="assigneeTableHeader">
               <div class="assignee-table-title-wrap">
-                <span class="assignee-table-title" id="assigneePanelLabel">담당자별 현황</span>
+                <span class="assignee-table-title" id="assigneePanelLabel" data-i18n="filter.assignee_panel_title">담당자별 현황</span>
                 <span class="assignee-count-badge" id="assigneeCountBadge">0명</span>
               </div>
-              <button type="button" class="btn-toggle-view active" id="btnToggleAssigneeView" title="상세 표 접기/펼치기">
+              <button type="button" class="btn-toggle-view active" id="btnToggleAssigneeView" data-i18n-title="filter.toggle_table_title" title="상세 표 접기/펼치기">
                 <span class="btn-toggle-icon">▲</span>
-                <span class="btn-toggle-text">표 접기</span>
+                <span class="btn-toggle-text" data-i18n="filter.table_collapse">표 접기</span>
               </button>
             </div>
 
             <!-- Detailed table (open by default) -->
             <div class="table-scroll" id="assigneeTableWrap">
               <table class="assignee-table">
-                <thead><tr><th>담당자</th><th>소속</th><th title="전체 담당 업무 (완료 포함)" data-i18n="filter.col_total_assigned">담당 건수</th><th>카테고리</th><th>진행률</th></tr></thead>
+                <thead><tr><th data-i18n="filter.col_assignee">담당자</th><th data-i18n="filter.col_dept">소속</th><th title="전체 담당 업무 (완료 포함)" data-i18n-title="filter.col_total_assigned_title" data-i18n="filter.col_total_assigned">담당 건수</th><th data-i18n="filter.col_category">카테고리</th><th data-i18n="filter.col_progress">진행률</th></tr></thead>
                 <tbody id="assigneeTableBody"></tbody>
               </table>
             </div>
@@ -2452,9 +2452,9 @@
           <span class="dept-modal-hint" data-i18n="dept.jira_hint">Jira 이슈와 자동 동기화할 프로젝트 키입니다.</span>
         </div>
         <div class="dept-modal-field">
-          <label for="deptAddCustomCategories"><span>사내 고유 업무 유형 (선택, 쉼표 구분)</span></label>
-          <input type="text" id="deptAddCustomCategories" placeholder="예: 회의, 업무인수인계, 내부검토, 일일보고" autocomplete="off">
-          <span class="dept-modal-hint">사내에서 자유롭게 사용할 세부 업무 유형들을 쉼표(,)로 구분해 등록합니다. (선택 사항)</span>
+          <label for="deptAddCustomCategories"><span data-i18n="dept.custom_types_label">사내 고유 업무 유형 (선택, 쉼표 구분)</span></label>
+          <input type="text" id="deptAddCustomCategories" data-i18n-ph="dept.custom_types_ph" placeholder="예: 회의, 업무인수인계, 내부검토, 일일보고" autocomplete="off">
+          <span class="dept-modal-hint" data-i18n="dept.custom_types_hint">사내에서 자유롭게 사용할 세부 업무 유형들을 쉼표(,)로 구분해 등록합니다. (선택 사항)</span>
         </div>
       </div>
       <div class="dept-modal-footer">
@@ -2471,7 +2471,7 @@
     <div class="dept-modal-header">
       <div class="dept-modal-title-wrap">
         <span class="dept-modal-icon">📦</span>
-        <h3 class="dept-modal-title" id="productCatModalTitle">제품 카테고리 및 규격 설정</h3>
+        <h3 class="dept-modal-title" id="productCatModalTitle" data-i18n="prod_cat.modal_title">제품 카테고리 및 규격 설정</h3>
       </div>
       <button type="button" class="dept-modal-close" id="btnProductCatModalClose" aria-label="닫기">✕</button>
     </div>
@@ -2480,21 +2480,21 @@
       
       <div class="field" style="margin-bottom: 16px;">
         <label for="productCatNameInput" style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">
-          제품 카테고리명 <span class="req" style="color: #ef4444;">*</span>
+          <span data-i18n="prod_cat.name_label">제품 카테고리명</span> <span class="req" style="color: #ef4444;">*</span>
         </label>
-        <input type="text" id="productCatNameInput" class="settings-input" placeholder="예: IP 카메라, AI 서버, IoT 센서, 클라우드 SW" required style="width: 100%;">
+        <input type="text" id="productCatNameInput" class="settings-input" data-i18n-ph="prod_cat.name_ph" placeholder="예: IP 카메라, AI 서버, IoT 센서, 클라우드 SW" required style="width: 100%;">
       </div>
 
       <div class="field" style="margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <label style="font-size: 13px; font-weight: 600; margin: 0;">
+          <label style="font-size: 13px; font-weight: 600; margin: 0;" data-i18n="prod_cat.spec_fields_label">
             제품별 규격 입력 항목 (Custom Spec Fields)
           </label>
-          <button type="button" class="btn-secondary" id="btnAddSpecFieldRow" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">
+          <button type="button" class="btn-secondary" id="btnAddSpecFieldRow" data-i18n="prod_cat.btn_add_field" style="padding: 4px 10px; font-size: 12px; font-weight: 600;">
             + 항목 추가
           </button>
         </div>
-        <p style="font-size: 11.5px; color: var(--ink-faint, #64748b); margin-bottom: 10px;">
+        <p style="font-size: 11.5px; color: var(--ink-faint, #64748b); margin-bottom: 10px;" data-i18n="prod_cat.spec_fields_hint">
           이 카테고리의 제품 등록 시 입력받을 규격(해상도, 전원, 라이선스, 배터리 등)을 정의합니다.
         </p>
 
@@ -2503,10 +2503,10 @@
           <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
             <thead>
               <tr style="background: var(--bg-hover, rgba(0,0,0,0.03)); border-bottom: 1px solid var(--border-color, #e2e8f0);">
-                <th style="padding: 6px 10px; text-align: left; width: 120px;">그룹 (Group)</th>
-                <th style="padding: 6px 10px; text-align: left;">항목명 (Label)</th>
-                <th style="padding: 6px 10px; text-align: left; width: 120px;">변수키 (Key)</th>
-                <th style="padding: 6px 10px; text-align: center; width: 50px;">삭제</th>
+                <th style="padding: 6px 10px; text-align: left; width: 120px;" data-i18n="prod_cat.col_group">그룹 (Group)</th>
+                <th style="padding: 6px 10px; text-align: left;" data-i18n="prod_cat.col_label">항목명 (Label)</th>
+                <th style="padding: 6px 10px; text-align: left; width: 120px;" data-i18n="prod_cat.col_key">변수키 (Key)</th>
+                <th style="padding: 6px 10px; text-align: center; width: 50px;" data-i18n="prod_cat.col_delete">삭제</th>
               </tr>
             </thead>
             <tbody id="specFieldsRowsBody">
@@ -2519,8 +2519,8 @@
       <div id="productCatModalError" class="form-error" style="margin-bottom: 12px; display: none;"></div>
 
       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;">
-        <button type="button" class="btn-secondary" id="btnProductCatModalCancel" style="padding: 7px 16px; font-size: 13px;">취소</button>
-        <button type="submit" class="btn-primary" id="btnProductCatModalSubmit" style="padding: 7px 20px; font-size: 13px;">저장하기</button>
+        <button type="button" class="btn-secondary" id="btnProductCatModalCancel" data-i18n="prod_cat.btn_cancel" style="padding: 7px 16px; font-size: 13px;">취소</button>
+        <button type="submit" class="btn-primary" id="btnProductCatModalSubmit" data-i18n="prod_cat.btn_submit" style="padding: 7px 20px; font-size: 13px;">저장하기</button>
       </div>
     </form>
   </div>
@@ -2586,7 +2586,7 @@
   <div class="pim-modal-card" style="max-width: 440px;">
     <div class="pim-modal-header">
       <div class="pim-modal-title-wrap">
-        <h2 class="pim-modal-model" style="font-size: 16px;">내 정보 수정</h2>
+        <h2 class="pim-modal-model" style="font-size: 16px;" data-i18n="profile.modal_title">내 정보 수정</h2>
       </div>
       <button type="button" class="pim-modal-close" id="btnEditProfileClose" aria-label="닫기">✕</button>
     </div>
@@ -2597,37 +2597,37 @@
           ?
         </div>
         <div style="flex: 1;">
-          <div style="font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">프로필 사진 (Avatar)</div>
+          <div style="font-size: 12.5px; font-weight: 600; margin-bottom: 5px;" data-i18n="profile.avatar_title">프로필 사진 (Avatar)</div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <label class="btn-secondary" style="padding: 5px 12px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; margin: 0;">
-              <span>사진 변경</span>
+              <span data-i18n="profile.change_photo">사진 변경</span>
               <input type="file" id="editProfileAvatarFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;">
             </label>
-            <button type="button" class="btn-secondary" id="btnEditProfileAvatarReset" style="padding: 5px 12px; font-size: 12px; display: none;">기본값으로 복원</button>
+            <button type="button" class="btn-secondary" id="btnEditProfileAvatarReset" data-i18n="profile.reset_photo" style="padding: 5px 12px; font-size: 12px; display: none;">기본값으로 복원</button>
           </div>
-          <div style="font-size: 11px; color: var(--ink-faint); margin-top: 4px;">JPG, PNG, WebP (권장 1:1 비율, 최대 5MB)</div>
+          <div style="font-size: 11px; color: var(--ink-faint); margin-top: 4px;" data-i18n="profile.avatar_hint">JPG, PNG, WebP (권장 1:1 비율, 최대 5MB)</div>
         </div>
       </div>
       <div class="field" style="margin-bottom: 14px;">
-        <label for="editProfileNameInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">이름 (성명)</label>
-        <input type="text" id="editProfileNameInput" class="settings-input" required placeholder="이름 입력">
+        <label for="editProfileNameInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;" data-i18n="profile.name_label">이름 (성명)</label>
+        <input type="text" id="editProfileNameInput" class="settings-input" required data-i18n-ph="profile.name_ph" placeholder="이름 입력">
       </div>
       <div class="field" style="margin-bottom: 14px;">
-        <label for="editProfileEmailInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">이메일 <span class="optional" style="font-weight: 400; color: var(--ink-faint);">(선택)</span></label>
-        <input type="email" id="editProfileEmailInput" class="settings-input" placeholder="user@company.com">
+        <label for="editProfileEmailInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;"><span data-i18n="profile.email_label">이메일</span> <span class="optional" style="font-weight: 400; color: var(--ink-faint);">(선택)</span></label>
+        <input type="email" id="editProfileEmailInput" class="settings-input" data-i18n-ph="profile.email_ph" placeholder="user@company.com">
       </div>
       <div class="field" style="margin-bottom: 14px;">
-        <label for="editProfileOrgSelect" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">업무 카테고리 (소속 / 프로젝트)</label>
+        <label for="editProfileOrgSelect" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;" data-i18n="profile.org_label">업무 카테고리 (소속 / 프로젝트)</label>
         <select id="editProfileOrgSelect" class="settings-select" style="width: 100%;"></select>
       </div>
       <div class="field" style="margin-bottom: 16px;">
-        <label for="editProfilePasswordInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;">새 비밀번호 <span class="optional" style="font-weight: 400; color: var(--ink-faint);">(변경 시에만 입력)</span></label>
-        <input type="password" id="editProfilePasswordInput" class="settings-input" placeholder="4자 이상 (비워두면 기존 유지)" autocomplete="new-password">
+        <label for="editProfilePasswordInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px;"><span data-i18n="profile.password_label">새 비밀번호</span> <span class="optional" style="font-weight: 400; color: var(--ink-faint);">(변경 시에만 입력)</span></label>
+        <input type="password" id="editProfilePasswordInput" class="settings-input" data-i18n-ph="profile.password_ph" placeholder="4자 이상 (비워두면 기존 유지)" autocomplete="new-password">
       </div>
       <div id="editProfileError" class="form-error" style="margin-bottom: 12px;"></div>
       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;">
-        <button type="button" class="btn-secondary" id="btnEditProfileCancel" style="padding: 8px 16px; font-size: 13px;">취소</button>
-        <button type="submit" class="btn-primary" id="btnEditProfileSubmit" style="padding: 8px 18px; font-size: 13px;">저장하기</button>
+        <button type="button" class="btn-secondary" id="btnEditProfileCancel" data-i18n="profile.btn_cancel" style="padding: 8px 16px; font-size: 13px;">취소</button>
+        <button type="submit" class="btn-primary" id="btnEditProfileSubmit" data-i18n="profile.btn_submit" style="padding: 8px 18px; font-size: 13px;">저장하기</button>
       </div>
     </form>
   </div>
@@ -2639,7 +2639,7 @@
     <div class="pim-modal-header" style="padding: 16px 20px; border-bottom: 1px solid var(--line);">
       <div class="pim-modal-title-wrap" style="display: flex; align-items: center; gap: 8px;">
         <span style="font-size: 18px;">✏️</span>
-        <h2 class="pim-modal-model" style="font-size: 16px; margin: 0; font-weight: 700; color: var(--ink);">업무 정보 수정</h2>
+        <h2 class="pim-modal-model" style="font-size: 16px; margin: 0; font-weight: 700; color: var(--ink);" data-i18n="record_edit.modal_title">업무 정보 수정</h2>
         <span id="recordEditCardCodeBadge" class="notif-item-tag tag-info" style="font-size: 11.5px; padding: 2px 7px;"></span>
       </div>
       <button type="button" class="pim-modal-close" id="btnRecordEditClose" aria-label="닫기">✕</button>
@@ -2649,45 +2649,45 @@
 
       <!-- Title -->
       <div class="field" style="margin-bottom: 14px;">
-        <label for="recordEditTitleInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">제목 <span style="color: var(--danger, #ef4444);">*</span></label>
-        <input type="text" id="recordEditTitleInput" class="settings-input" style="width: 100%; font-size: 13.5px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);" required placeholder="업무 제목 입력">
+        <label for="recordEditTitleInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);"><span data-i18n="record_edit.title_label">제목</span> <span style="color: var(--danger, #ef4444);">*</span></label>
+        <input type="text" id="recordEditTitleInput" class="settings-input" style="width: 100%; font-size: 13.5px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);" required data-i18n-ph="record_edit.title_ph" placeholder="업무 제목 입력">
       </div>
 
       <!-- 2-column: Assignee & Participants -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
         <div class="field">
-          <label for="recordEditAssigneeSelect" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">담당자</label>
+          <label for="recordEditAssigneeSelect" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);" data-i18n="record_edit.assignee_label">담당자</label>
           <select id="recordEditAssigneeSelect" class="settings-select" style="width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);"></select>
         </div>
         <div class="field">
-          <label for="recordEditParticipantsInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">참여자</label>
-          <input type="text" id="recordEditParticipantsInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);" placeholder="예: 홍길동, 김철수 (쉼표 구분)">
+          <label for="recordEditParticipantsInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);" data-i18n="record_edit.participants_label">참여자</label>
+          <input type="text" id="recordEditParticipantsInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);" data-i18n-ph="record_edit.participants_ph" placeholder="예: 홍길동, 김철수 (쉼표 구분)">
         </div>
       </div>
 
       <!-- 2-column: Start Date & Due Date -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
         <div class="field">
-          <label for="recordEditStartDateInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">시작일</label>
+          <label for="recordEditStartDateInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);" data-i18n="record_edit.start_date_label">시작일</label>
           <input type="date" id="recordEditStartDateInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);">
         </div>
         <div class="field">
-          <label for="recordEditDueDateInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">마감일</label>
+          <label for="recordEditDueDateInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);" data-i18n="record_edit.due_date_label">마감일</label>
           <input type="date" id="recordEditDueDateInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);">
         </div>
       </div>
 
       <!-- Description / Memo -->
       <div class="field" style="margin-bottom: 14px;">
-        <label for="recordEditMemoInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);">상세 내용 / 메모</label>
-        <textarea id="recordEditMemoInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); line-height: 1.5; resize: vertical;" rows="5" placeholder="업무 상세 설명 또는 진행 메모"></textarea>
+        <label for="recordEditMemoInput" style="display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--ink);" data-i18n="record_edit.memo_label">상세 내용 / 메모</label>
+        <textarea id="recordEditMemoInput" class="settings-input" style="width: 100%; font-size: 13px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); line-height: 1.5; resize: vertical;" rows="5" data-i18n-ph="record_edit.memo_ph" placeholder="업무 상세 설명 또는 진행 메모"></textarea>
       </div>
 
       <div id="recordEditError" class="form-error" style="margin-bottom: 12px; color: #ef4444; font-size: 12.5px;" hidden></div>
 
       <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);">
-        <button type="button" class="btn-secondary" id="btnRecordEditCancel" style="padding: 8px 18px; font-size: 13px; border-radius: 6px;">취소</button>
-        <button type="submit" class="btn-primary" id="btnRecordEditSubmit" style="padding: 8px 22px; font-size: 13px; font-weight: 600; border-radius: 6px; background: var(--accent-2); color: #ffffff; border: none; cursor: pointer;">저장하기</button>
+        <button type="button" class="btn-secondary" id="btnRecordEditCancel" data-i18n="record_edit.btn_cancel" style="padding: 8px 18px; font-size: 13px; border-radius: 6px;">취소</button>
+        <button type="submit" class="btn-primary" id="btnRecordEditSubmit" data-i18n="record_edit.btn_submit" style="padding: 8px 22px; font-size: 13px; font-weight: 600; border-radius: 6px; background: var(--accent-2); color: #ffffff; border: none; cursor: pointer;">저장하기</button>
       </div>
     </form>
   </div>
@@ -2696,10 +2696,10 @@
 <div id="toast" role="status"></div>
 
 <script src="js/utils.js?v=4.3"></script>
-<script src="js/i18n.js?v=1.6"></script>
+<script src="js/i18n.js?v=1.7"></script>
 <script src="js/api.js?v=5.1"></script>
 <script src="js/auth.js?v=5.1"></script>
-<script src="js/dashboard.js?v=8.2"></script>
+<script src="js/dashboard.js?v=8.3"></script>
 <script src="js/jira-form.js?v=6.2"></script>
 <script src="js/calendar.js?v=8.3"></script>
 <script src="js/home.js?v=5.6"></script>

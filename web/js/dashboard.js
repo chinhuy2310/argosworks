@@ -143,7 +143,8 @@ function populateCatFilterAll(){
       });
     });
     all.sort(function(a, b){ return a.localeCompare(b, "ko"); });
-    var html = '<option value="all">전체 카테고리</option>';
+    var allCatLabel = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.all_categories") : "전체 카테고리";
+    var html = '<option value="all">' + escapeHtml(allCatLabel) + '</option>';
     all.forEach(function(c){
       html += '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
     });
@@ -158,7 +159,8 @@ function populateCatFilterForDept(deptId){
   }
   var current = el.catFilter.value;
   return loadCategoriesFor(deptId).then(function(cats){
-    var html = '<option value="all">전체 카테고리</option>';
+    var allCatLabel = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.all_categories") : "전체 카테고리";
+    var html = '<option value="all">' + escapeHtml(allCatLabel) + '</option>';
     cats.forEach(function(c){
       html += '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
     });
@@ -328,7 +330,8 @@ function populateAssigneeFilter(deptId){
   });
 
   var names = Object.keys(map).sort(function(a, b){ return a.localeCompare(b, "ko"); }).map(function(k){ return map[k]; });
-  var html = '<option value="all">전체 담당자</option>';
+  var allAssigneesLabel = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.all_assignees") : "전체 담당자";
+  var html = '<option value="all">' + escapeHtml(allAssigneesLabel) + '</option>';
   names.forEach(function(name){
     html += '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</option>';
   });
@@ -605,33 +608,46 @@ function renderAssigneeTable(){
   });
 
   var labelEl = document.getElementById("assigneePanelLabel");
+  var baseAssigneeTitle = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.assignee_panel_title") : "담당자별 현황";
   if(labelEl){
     if(selectedDeptForAssignee){
       var d = deptById(selectedDeptForAssignee);
       var deptName = d ? d.name : selectedDeptForAssignee;
-      labelEl.innerHTML = '담당자별 현황 <span style="font-size:11.5px;font-weight:600;color:var(--accent-2);margin-left:6px;">(' + escapeHtml(deptName) + ')</span>';
+      labelEl.innerHTML = escapeHtml(baseAssigneeTitle) + ' <span style="font-size:11.5px;font-weight:600;color:var(--accent-2);margin-left:6px;">(' + escapeHtml(deptName) + ')</span>';
     } else {
-      labelEl.textContent = "담당자별 현황";
+      labelEl.textContent = baseAssigneeTitle;
     }
   }
 
   var barEl = el.assigneeBar || document.getElementById("assigneeBar");
   var countBadgeEl = el.assigneeCountBadge || document.getElementById("assigneeCountBadge");
   if(countBadgeEl){
-    countBadgeEl.textContent = rows.length + "명";
+    countBadgeEl.textContent = (window.i18n && typeof window.i18n.t === "function")
+      ? window.i18n.t("common.person_count", {count: rows.length})
+      : (rows.length + "명");
   }
 
   if(rows.length === 0){
+    var emptyMsg = (window.i18n && typeof window.i18n.t === "function")
+      ? window.i18n.t("filter.assignee_empty")
+      : "선택한 부서의 담당자 현황 데이터가 없습니다.";
     if(barEl){
-      barEl.innerHTML = '<span style="font-size:12px;color:var(--ink-faint);padding:6px 0;">선택한 부서의 담당자 현황 데이터가 없습니다.</span>';
+      barEl.innerHTML = '<span style="font-size:12px;color:var(--ink-faint);padding:6px 0;">' + escapeHtml(emptyMsg) + '</span>';
     }
     if(el.assigneeBody){
-      el.assigneeBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);padding:24px 10px;">선택한 부서의 담당자 현황 데이터가 없습니다.</td></tr>';
+      el.assigneeBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);padding:24px 10px;">' + escapeHtml(emptyMsg) + '</td></tr>';
     }
     return;
   }
 
   var barHtml = "";
+
+  var sDone = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_done") : "완료";
+  var sReview = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_review") : "검토";
+  var sInprog = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_inprog") : "진행";
+  var sTodo = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_todo") : "대기";
+  var sWeightedProgress = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.weighted_progress") : "가중 진행률";
+  var sZeroTasks = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("common.zero_items") : "0건";
 
   var tableRowsHtml = rows.map(function(a){
     var cats = Object.keys(a.cats).sort(function(x, y){ return a.cats[y] - a.cats[x]; });
@@ -658,7 +674,11 @@ function renderAssigneeTable(){
 
     var numColor = overallPct >= 80 ? "#10b981" : (overallPct >= 50 ? "#3b82f6" : (overallPct >= 25 ? "#f59e0b" : "var(--ink-faint)"));
 
-    var tooltip = a.name + " (" + dept.name + ") · 담당 " + a.count + "건 (완료 " + a.done + ", 검토 " + a.review + ", 진행 " + a.inprog + ", 대기 " + a.todo + ") · 가중 진행률 " + overallPct + "%";
+    var assignedText = (window.i18n && typeof window.i18n.t === "function")
+      ? window.i18n.t("filter.assigned_count", {count: a.count})
+      : ("담당 " + a.count + "건");
+
+    var tooltip = a.name + " (" + dept.name + ") · " + assignedText + " (" + sDone + " " + a.done + ", " + sReview + " " + a.review + ", " + sInprog + " " + a.inprog + ", " + sTodo + " " + a.todo + ") · " + sWeightedProgress + " " + overallPct + "%";
 
     var isUnassignedUser = (!a.name || a.name === "미배정" || a.name === "Unassigned" || a.name === "미할당");
     var initial = isUnassignedUser ? "?" : a.name.trim().charAt(0);
@@ -676,21 +696,21 @@ function renderAssigneeTable(){
         '<span class="pill-avatar-initial">' + escapeHtml(initial) + '</span>' +
       '</div>' +
       nameHtml +
-      '<span class="pill-count" title="담당 ' + a.count + '건">' + a.count + '</span>' +
+      '<span class="pill-count" title="' + escapeHtml(assignedText) + '">' + a.count + '</span>' +
     '</div>';
 
     var breakdown = [];
-    if(a.done > 0) breakdown.push('<span class="pg-item pg-done">완료 ' + a.done + '</span>');
-    if(a.review > 0) breakdown.push('<span class="pg-item pg-review">검토 ' + a.review + '</span>');
-    if(a.inprog > 0) breakdown.push('<span class="pg-item pg-inprog">진행 ' + a.inprog + '</span>');
-    if(a.todo > 0) breakdown.push('<span class="pg-item pg-todo">대기 ' + a.todo + '</span>');
-    if(breakdown.length === 0) breakdown.push('<span class="pg-item pg-todo">0건</span>');
+    if(a.done > 0) breakdown.push('<span class="pg-item pg-done">' + escapeHtml(sDone) + ' ' + a.done + '</span>');
+    if(a.review > 0) breakdown.push('<span class="pg-item pg-review">' + escapeHtml(sReview) + ' ' + a.review + '</span>');
+    if(a.inprog > 0) breakdown.push('<span class="pg-item pg-inprog">' + escapeHtml(sInprog) + ' ' + a.inprog + '</span>');
+    if(a.todo > 0) breakdown.push('<span class="pg-item pg-todo">' + escapeHtml(sTodo) + ' ' + a.todo + '</span>');
+    if(breakdown.length === 0) breakdown.push('<span class="pg-item pg-todo">' + escapeHtml(sZeroTasks) + '</span>');
 
     return (
       '<tr class="assignee-row' + (isSelected ? " selected" : "") + '" data-assignee="' + escapeHtml(a.name) + '" style="cursor:pointer;' + (isSelected ? 'background:var(--accent-2-soft);' : '') + '">' +
         '<td class="assignee-name">' + escapeHtml(a.name) + '</td>' +
         '<td class="assignee-col-org"><span class="org-tag" style="--tag-color:' + colorVar(dept.colorIndex) + '">' + escapeHtml(dept.name) + '</span></td>' +
-        '<td class="num assignee-col-count" title="담당 ' + a.count + '건 (완료 ' + a.done + ', 검토 ' + a.review + ', 진행 ' + a.inprog + ', 대기 ' + a.todo + ')">' + a.count + '</td>' +
+        '<td class="num assignee-col-count" title="' + escapeHtml(assignedText + " (" + sDone + " " + a.done + ", " + sReview + " " + a.review + ", " + sInprog + " " + a.inprog + ", " + sTodo + " " + a.todo + ")") + '">' + a.count + '</td>' +
         '<td class="assignee-col-cats"><div class="assignee-cat-tags">' + shown + overflow + '</div></td>' +
         '<td class="assignee-col-progress">' +
           '<div class="assignee-progress-cell" title="' + escapeHtml(tooltip) + '">' +
@@ -842,7 +862,9 @@ window.toggleAllTreeItems = function(){
   window.treeExpandedAll = !window.treeExpandedAll;
   var btn = el.btnToggleTree || document.getElementById("btnToggleTree");
   if(btn){
-    btn.textContent = window.treeExpandedAll ? "📁 모두 접기" : "📂 모두 펼치기";
+    btn.textContent = (window.i18n && typeof window.i18n.t === "function")
+      ? window.i18n.t(window.treeExpandedAll ? "filter.collapse_all" : "filter.expand_all")
+      : (window.treeExpandedAll ? "📁 모두 접기" : "📂 모두 펼치기");
   }
   document.querySelectorAll(".tree-children-wrap").forEach(function(wrap){
     wrap.hidden = !window.treeExpandedAll;
@@ -972,8 +994,11 @@ function renderSingleRecordCard(r, isChild, highlightId){
 
   var toggleBtnHtml = "";
   if(hasChildren){
+    var subtaskTitle = (window.i18n && typeof window.i18n.t === "function")
+      ? window.i18n.t("card.subtask_title", {count: r._children.length})
+      : ("하위 작업 " + r._children.length + "건 펼치기/접기");
     toggleBtnHtml = (
-      '<button type="button" class="tree-toggle-btn' + (isOpen ? ' expanded' : '') + '" id="tree-btn-' + safeKey + '" onclick="event.preventDefault(); event.stopPropagation(); window.toggleTreeItem(\'' + safeKey + '\');" title="하위 작업 ' + r._children.length + '건 펼치기/접기">' +
+      '<button type="button" class="tree-toggle-btn' + (isOpen ? ' expanded' : '') + '" id="tree-btn-' + safeKey + '" onclick="event.preventDefault(); event.stopPropagation(); window.toggleTreeItem(\'' + safeKey + '\');" title="' + escapeHtml(subtaskTitle) + '">' +
         '<span class="tree-chevron">▶</span>' +
       '</button>'
     );
@@ -987,12 +1012,22 @@ function renderSingleRecordCard(r, isChild, highlightId){
     ? r._children.length
     : (r._totalSubtasksCount || 0);
 
+  var subtaskHint = (window.i18n && typeof window.i18n.t === "function")
+    ? window.i18n.t("card.subtask_hint", {count: subtaskCount})
+    : ("하위 작업 " + subtaskCount + "건 (클릭하여 캔버스에서 확인)");
+  var subtaskBadgeText = (window.i18n && typeof window.i18n.t === "function")
+    ? window.i18n.t("card.subtask_badge", {count: subtaskCount})
+    : ("하위 " + subtaskCount + "건");
+
   var countBadgeHtml = (subtaskCount > 0)
-    ? '<span class="badge-subtask-count" title="하위 작업 ' + subtaskCount + '건 (클릭하여 캔버스에서 확인)">하위 ' + subtaskCount + '건</span>'
+    ? '<span class="badge-subtask-count" title="' + escapeHtml(subtaskHint) + '">' + escapeHtml(subtaskBadgeText) + '</span>'
     : '';
 
+  var parentRefText = (window.i18n && typeof window.i18n.t === "function")
+    ? window.i18n.t("card.parent_ref", {key: escapeHtml(r.parentKey || "")})
+    : ("상위: " + escapeHtml(r.parentKey || ""));
   var parentRefHtml = (r.parentKey && !isChild)
-    ? '<span class="badge-parent-ref">상위: ' + escapeHtml(r.parentKey) + '</span>'
+    ? '<span class="badge-parent-ref">' + parentRefText + '</span>'
     : '';
 
   var attachHtml = (r.attachments && r.attachments.length)
@@ -1010,16 +1045,23 @@ function renderSingleRecordCard(r, isChild, highlightId){
   var cleanRecId = String(r.id || "").trim().toUpperCase().replace(/^#/, "").replace(/^REC-/, "").replace(/^JIRA-/, "");
   var isActiveCard = Boolean(cleanActiveKey && (cleanActiveKey === cleanCardKey || cleanActiveKey === cleanRecId));
 
+  var unassignedText = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("common.unassigned") : "미배정";
   var isUnassignedRec = (!r.assignee || r.assignee === "미배정" || r.assignee === "Unassigned" || r.assignee === "미할당");
   var assigneeLabelHtml = isUnassignedRec 
-    ? '<span style="color:#64748b; font-weight:600;">❓ 미배정</span>' 
+    ? '<span style="color:#64748b; font-weight:600;">❓ ' + escapeHtml(unassignedText) + '</span>' 
     : escapeHtml(r.assignee);
 
   var participantsBadgeHtml = "";
   if(r.participants){
     var pList = String(r.participants).split(/[,;/]+/).map(function(s){ return s.trim(); }).filter(Boolean);
     if(pList.length > 0){
-      participantsBadgeHtml = ' <span class="badge-participants" style="display:inline-flex; align-items:center; gap:3px; font-size:11px; color:var(--text-cyan, #0ea5e9); background:rgba(14,165,233,0.08); padding:1px 6px; border-radius:4px; font-weight:600;" title="참여자: ' + escapeHtml(pList.join(', ')) + '">👥 +' + pList.length + '명</span>';
+      var partTitle = (window.i18n && typeof window.i18n.t === "function")
+        ? window.i18n.t("card.participants_title", {list: escapeHtml(pList.join(', '))})
+        : ("참여자: " + escapeHtml(pList.join(', ')));
+      var partCount = (window.i18n && typeof window.i18n.t === "function")
+        ? window.i18n.t("common.person_count", {count: pList.length})
+        : (pList.length + '명');
+      participantsBadgeHtml = ' <span class="badge-participants" style="display:inline-flex; align-items:center; gap:3px; font-size:11px; color:var(--text-cyan, #0ea5e9); background:rgba(14,165,233,0.08); padding:1px 6px; border-radius:4px; font-weight:600;" title="' + escapeHtml(partTitle) + '">👥 +' + escapeHtml(partCount) + '</span>';
     }
   }
 
@@ -1046,11 +1088,13 @@ function renderSingleRecordCard(r, isChild, highlightId){
     metaContentHtml = '<span class="meta">' + (metaParts.length > 0 ? metaParts.join(' · ') : '') + participantsBadgeHtml + '</span>';
   }
 
+  var openCanvasHint = (window.i18n && typeof window.i18n.t === "function") ? (" (" + window.i18n.t("card.click_to_open_canvas") + ")") : " (클릭하여 캔버스 열기)";
+
   return (
     '<div class="record' + flash + (isChild ? ' child-record' : '') + (isActiveCard ? ' canvas-active-card' : '') + '" id="rec-' + safeKey + '" data-card-key="' + escapeHtml(cardKey) + '" data-record-id="' + escapeHtml(String(r.id || '')) + '">' +
       '<div class="record-row" onclick="window.handleRecordCardClick(event, this);" data-card-key="' + escapeHtml(cardKey) + '" data-safe-key="' + escapeHtml(safeKey) + '" data-has-children="' + hasChildren + '" style="cursor:pointer;">' +
         toggleBtnHtml +
-        '<span class="record-card-code org-tag" title="' + escapeHtml(dept.name) + (cardKey ? ' (클릭하여 캔버스 열기)' : '') + '">' + escapeHtml(cardCode) + '</span>' +
+        '<span class="record-card-code org-tag" title="' + escapeHtml(dept.name) + (cardKey ? openCanvasHint : '') + '">' + escapeHtml(cardCode) + '</span>' +
         '<span class="record-main">' +
           '<span class="title">' + escapeHtml(r.title) + countBadgeHtml + parentRefHtml + '</span>' +
           metaContentHtml +
@@ -1135,7 +1179,11 @@ function updateAssigneePanelVisibility(){
       toggleBtn.classList.toggle("active", !isAssigneeTableCollapsed);
       var textEl = toggleBtn.querySelector(".btn-toggle-text");
       var iconEl = toggleBtn.querySelector(".btn-toggle-icon");
-      if(textEl) textEl.textContent = isAssigneeTableCollapsed ? "상세 표 보기" : "표 접기";
+      if(textEl) {
+        textEl.textContent = isAssigneeTableCollapsed
+          ? ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.table_expand") : "상세 표 보기")
+          : ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.table_collapse") : "표 접기");
+      }
       if(iconEl) iconEl.textContent = isAssigneeTableCollapsed ? "▼" : "▲";
     }
   } else {
@@ -1221,10 +1269,9 @@ function loadMoreDashboardCards(){
   
   // Cập nhật lại số lượng hiển thị trên caption
   if(el.recordsCaption){
-    var labelMode = (currentMode === "flat") ? "플랫 보기" : "트리 보기";
     el.recordsCaption.textContent = (currentMode === "flat")
-      ? ("표시 중 " + dashRenderedCount + "건 · 전체 " + dashLastVisibleList.length + "건 (스크롤하여 더 보기)")
-      : ("표시 중 " + dashRenderedCount + "개 그룹 · 전체 " + dashLastVisibleList.length + "개 그룹 (스크롤하여 더 보기)");
+      ? ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.showing_items_of", {rendered: dashRenderedCount, total: dashLastVisibleList.length}) : ("표시 중 " + dashRenderedCount + "건 · 전체 " + dashLastVisibleList.length + "건 (스크롤하여 더 보기)"))
+      : ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.showing_groups_of", {rendered: dashRenderedCount, total: (records ? records.length : dashLastVisibleList.length)}) : ("표시 중 " + dashRenderedCount + "개 그룹 · 전체 " + dashLastVisibleList.length + "개 그룹 (스크롤하여 더 보기)"));
   }
   
   setTimeout(function(){ dashIsLoadingMore = false; }, 80);
@@ -1307,10 +1354,10 @@ function renderRecords(highlightId){
     dashRenderedCount = Math.min(dashPageSize, visible.length);
     var initialSlice = visible.slice(0, dashRenderedCount);
 
-    el.recordsLabel.textContent = "전체 기록 (플랫 보기)";
+    el.recordsLabel.textContent = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.records_flat_title") : "전체 기록 (플랫 보기)";
     el.recordsCaption.textContent = visible.length > dashRenderedCount
-      ? ("표시 중 " + dashRenderedCount + "건 · 전체 " + visible.length + "건 (스크롤하여 더 보기)")
-      : ("전체 " + visible.length + "건");
+      ? ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.showing_items_of", {rendered: dashRenderedCount, total: visible.length}) : ("표시 중 " + dashRenderedCount + "건 · 전체 " + visible.length + "건 (스크롤하여 더 보기)"))
+      : ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.total_items", {total: visible.length}) : ("전체 " + visible.length + "건"));
 
     el.list.innerHTML = initialSlice.map(function(r){
       return renderSingleRecordCard(r, false, highlightId);
@@ -1323,7 +1370,7 @@ function renderRecords(highlightId){
     var rHeaderAssignee = el.recordsHeader || document.getElementById("recordsHeader");
     if(rHeaderAssignee) rHeaderAssignee.style.display = "none";
     var assigneeGroups = {};
-    var unassignedLabel = "미할당 (Chưa phân công)";
+    var unassignedLabel = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("common.unassigned") : "미할당";
 
     visible.forEach(function(r){
       var name = r.assignee ? assigneeBaseName(r.assignee) : unassignedLabel;
@@ -1345,8 +1392,15 @@ function renderRecords(highlightId){
       return b.records.length - a.records.length;
     });
 
-    el.recordsLabel.textContent = "담당자별 그룹 보기";
-    el.recordsCaption.textContent = "총 " + groups.length + "명 · " + visible.length + "건";
+    el.recordsLabel.textContent = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.records_assignee_title") : "담당자별 그룹 보기";
+    el.recordsCaption.textContent = (window.i18n && typeof window.i18n.t === "function")
+      ? window.i18n.t("filter.records_assignee_caption", {members: groups.length, total: visible.length})
+      : ("총 " + groups.length + "명 · " + visible.length + "건");
+
+    var sDone = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_done") : "완료";
+    var sReview = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_review") : "검토";
+    var sInprog = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_inprog") : "진행";
+    var sTodo = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.status_todo") : "대기";
 
     el.list.innerHTML = groups.map(function(g){
       var dept = deptById(g.org);
@@ -1363,15 +1417,19 @@ function renderRecords(highlightId){
       }).join("");
 
       var metaBreakdown = [];
-      if(doneCount > 0) metaBreakdown.push('<span style="color:#10b981;font-weight:600;">완료 ' + doneCount + '</span>');
-      if(reviewCount > 0) metaBreakdown.push('<span style="color:#3b82f6;font-weight:600;">검토 ' + reviewCount + '</span>');
-      if(inprogCount > 0) metaBreakdown.push('<span style="color:#f59e0b;font-weight:600;">진행 ' + inprogCount + '</span>');
-      if(todoCount > 0) metaBreakdown.push('<span style="color:var(--ink-faint);">대기 ' + todoCount + '</span>');
+      if(doneCount > 0) metaBreakdown.push('<span style="color:#10b981;font-weight:600;">' + escapeHtml(sDone) + ' ' + doneCount + '</span>');
+      if(reviewCount > 0) metaBreakdown.push('<span style="color:#3b82f6;font-weight:600;">' + escapeHtml(sReview) + ' ' + reviewCount + '</span>');
+      if(inprogCount > 0) metaBreakdown.push('<span style="color:#f59e0b;font-weight:600;">' + escapeHtml(sInprog) + ' ' + inprogCount + '</span>');
+      if(todoCount > 0) metaBreakdown.push('<span style="color:var(--ink-faint);">' + escapeHtml(sTodo) + ' ' + todoCount + '</span>');
 
       var gAvatarRecord = g.records.find(function(r){ return r.assigneeAvatar || (r.jira && r.jira.assigneeAvatar); });
       var gAvatar = gAvatarRecord ? (gAvatarRecord.assigneeAvatar || (gAvatarRecord.jira && gAvatarRecord.jira.assigneeAvatar) || "") : "";
       var isGAvatar = Boolean(!isUnassignedGroup && gAvatar && gAvatar.indexOf("default-avatar") === -1 && gAvatar.indexOf("default/") === -1);
       var groupAvatarBg = isUnassignedGroup ? "#64748b" : (getAssigneeColor(g.displayName) || colorVar(dept ? dept.colorIndex : 0));
+
+      var groupTotalText = (window.i18n && typeof window.i18n.t === "function")
+        ? window.i18n.t("common.count_tasks", {count: g.records.length})
+        : (g.records.length + "건");
 
       return (
         '<div class="assignee-group-block">' +
@@ -1386,7 +1444,7 @@ function renderRecords(highlightId){
             '</div>' +
             '<div class="assignee-group-meta">' +
               '<div class="assignee-group-breakdown">' + metaBreakdown.join('<span style="color:var(--line);margin:0 4px;">·</span>') + '</div>' +
-              '<span class="badge-group-total">' + g.records.length + '건</span>' +
+              '<span class="badge-group-total">' + escapeHtml(groupTotalText) + '</span>' +
             '</div>' +
           '</div>' +
           '<div class="assignee-group-records">' +
@@ -1407,10 +1465,10 @@ function renderRecords(highlightId){
   dashRenderedCount = Math.min(dashPageSize, treeRoots.length);
   var initialTreeSlice = treeRoots.slice(0, dashRenderedCount);
 
-  el.recordsLabel.textContent = "전체 기록 (트리 보기)";
+  el.recordsLabel.textContent = (window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.records_tree_title") : "전체 기록 (트리 보기)";
   el.recordsCaption.textContent = treeRoots.length > dashRenderedCount
-    ? ("표시 중 " + dashRenderedCount + "개 그룹 · 전체 " + visible.length + "건 (스크롤하여 더 보기)")
-    : ("총 " + visible.length + "건 (" + treeRoots.length + "개 그룹)");
+    ? ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.showing_groups_of", {rendered: dashRenderedCount, total: visible.length}) : ("표시 중 " + dashRenderedCount + "개 그룹 · 전체 " + visible.length + "건 (스크롤하여 더 보기)"))
+    : ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.tree_caption_summary", {total: visible.length, groups: treeRoots.length}) : ("총 " + visible.length + "건 (" + treeRoots.length + "개 그룹)"));
 
   el.list.innerHTML = initialTreeSlice.map(function(r){
     return renderTreeNode(r, highlightId, 0);
@@ -1584,7 +1642,11 @@ if(toggleBtnDept && tableWrap){
     tableWrap.style.display = isHidden ? "" : "none";
     toggleBtnDept.classList.toggle("active", isHidden);
     var textEl = toggleBtnDept.querySelector(".btn-toggle-text");
-    if(textEl) textEl.textContent = isHidden ? "표 닫기" : "상세 표";
+    if(textEl) {
+      textEl.textContent = isHidden
+        ? ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.table_close") : "표 닫기")
+        : ((window.i18n && typeof window.i18n.t === "function") ? window.i18n.t("filter.view_table") : "상세 표");
+    }
   });
 }
 
@@ -1829,3 +1891,13 @@ var orgSelectElem2 = document.getElementById("orgSelect");
 if(orgSelectElem2){
   orgSelectElem2.addEventListener("change", function(){ populateCatSelect(orgSelectElem2.value); });
 }
+
+window.addEventListener("langchange", function(){
+  try {
+    populateCatFilterAll();
+    populateAssigneeFilter(selectedDeptForAssignee);
+    renderAssigneeTable();
+    updateAssigneePanelVisibility();
+    renderRecords();
+  } catch(e){}
+});
