@@ -55,6 +55,8 @@ class TestEnterpriseSetupWizard(unittest.TestCase):
         init_db()
 
     def setUp(self):
+        from handlers.setup_handler import reset_setup_cache
+        reset_setup_cache()
         # Backup and clear users table for setup test
         self.original_users = query("SELECT * FROM users")
         self.original_sessions = query("SELECT * FROM sessions")
@@ -62,6 +64,8 @@ class TestEnterpriseSetupWizard(unittest.TestCase):
         execute("DELETE FROM users")
 
     def tearDown(self):
+        from handlers.setup_handler import reset_setup_cache
+        reset_setup_cache()
         # Restore database
         execute("DELETE FROM sessions")
         execute("DELETE FROM users")

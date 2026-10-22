@@ -14,29 +14,29 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install runtime utilities (curl for container healthcheck, tzdata for timezone)
+# Install runtime utilities (curl for container healthcheck, tzdata for timezone, gosu for safe privilege drop)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     curl \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install python dependencies from lockfile
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Copy application source code
 COPY server/ ./server/
 COPY web/ ./web/
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Create non-root user for security
 RUN groupadd -r appgroup && useradd -r -g appgroup -d /app -s /sbin/nologin appuser
 
 # Pre-create data and backup directories and set permissions
-RUN mkdir -p /app/data /app/data/backups /app/data/attachments /app/data/templates && \
+RUN mkdir -p /app/data /app/data/backups /app/data/attachments /app/data/templates /app/logs && \
     chown -R appuser:appgroup /app
-
-# Switch to non-root user
-USER appuser
 
 # Declare volume for persistent data
 VOLUME ["/app/data"]
@@ -46,6 +46,8 @@ EXPOSE 8080
 # Built-in Container Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/api/health || exit 1
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Start ARGOS WORKS server
 CMD ["python", "server/main.py"]

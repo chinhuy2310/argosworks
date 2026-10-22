@@ -11,10 +11,21 @@ from db import query, get_one, execute, transaction
 from utils.logging import access_log
 
 
+_setup_completed_cache = None
+
+def reset_setup_cache():
+    global _setup_completed_cache
+    _setup_completed_cache = None
+
 def check_needs_setup():
     """시스템에 등록된 사용자가 0명인지 확인하여 초기 설정 마법사 실행 여부를 반환한다."""
     try:
+        global _setup_completed_cache
+        if _setup_completed_cache is True:
+            return False
         cnt = get_one("SELECT COUNT(*) AS c FROM users")
+        if cnt and cnt["c"] > 0:
+            _setup_completed_cache = True
         return (cnt["c"] == 0) if cnt else True
     except Exception:
         return False

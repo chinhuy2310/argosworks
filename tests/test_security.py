@@ -29,7 +29,7 @@ class TestSecurityMiddleware(unittest.TestCase):
 
     def test_csrf_token_lifecycle(self):
         token = generate_csrf_token("test-session-token-123")
-        self.assertTrue(validate_csrf_token(token))
+        self.assertTrue(validate_csrf_token(token, "test-session-token-123"))
         self.assertFalse(validate_csrf_token("invalid-tampered-token"))
 
     def test_strict_cors_origin_whitelist(self):

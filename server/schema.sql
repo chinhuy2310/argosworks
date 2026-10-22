@@ -201,7 +201,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_dept_id TEXT NOT NULL,
     user_email TEXT NOT NULL DEFAULT '',
     is_admin INTEGER NOT NULL DEFAULT 0,
-    created_at REAL NOT NULL  -- Unix epoch seconds
+    created_at REAL NOT NULL,  -- Unix epoch seconds
+    last_active_at REAL NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 

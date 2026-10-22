@@ -247,51 +247,62 @@ def hash_password(password, salt_hex=None, iterations=PBKDF2_ROUNDS):
 def verify_password(password, salt_hex, hash_hex, iterations=None, user_id=None):
     """
     비밀번호 검증 및 자동 점진적 보안 업그레이드(Auto-upgrade hash to 600k iterations).
+    단일 반복 횟수로 검증하여 잘못된 비밀번호 시 CPU 낭비(DoS 위험)를 방지한다.
     """
     if not salt_hex or not hash_hex:
         return False
 
-    # Always try both PBKDF2_ROUNDS (600k) and legacy 100k, favoring recorded iterations if known
-    candidate_iters = [PBKDF2_ROUNDS, 100000]
-    if iterations:
-        if iterations not in candidate_iters:
-            candidate_iters.insert(0, iterations)
-    elif user_id:
+    target_iters = iterations
+    if not target_iters and user_id:
         try:
             row = get_one("SELECT iterations FROM users WHERE id = ? LIMIT 1", (user_id,))
             if row and row.get("iterations"):
-                rec_iter = int(row["iterations"])
-                if rec_iter in candidate_iters:
-                    candidate_iters.remove(rec_iter)
-                candidate_iters.insert(0, rec_iter)
+                target_iters = int(row["iterations"])
         except Exception:
             pass
 
-    matched_iter = None
-    for it in candidate_iters:
+    if target_iters:
         try:
-            _, digest_hex = hash_password(password, salt_hex, iterations=it)
+            _, digest_hex = hash_password(password, salt_hex, iterations=target_iters)
             if hmac.compare_digest(digest_hex, hash_hex):
-                matched_iter = it
-                break
+                if target_iters < PBKDF2_ROUNDS and user_id:
+                    try:
+                        new_salt, new_hash = hash_password(password, iterations=PBKDF2_ROUNDS)
+                        execute(
+                            "UPDATE users SET salt = ?, password_hash = ?, iterations = ?, hash_algo = 'pbkdf2_sha256' WHERE id = ?",
+                            (new_salt, new_hash, PBKDF2_ROUNDS, user_id)
+                        )
+                    except Exception:
+                        pass
+                return True
         except Exception:
-            continue
+            return False
+        return False
 
-    if matched_iter is not None:
-        # If user verified with legacy rounds (< 600k), automatically upgrade hash in DB
-        if matched_iter < PBKDF2_ROUNDS and user_id:
-            try:
-                new_salt, new_hash = hash_password(password, iterations=PBKDF2_ROUNDS)
-                execute(
-                    "UPDATE users SET salt = ?, password_hash = ?, hash_algo = 'pbkdf2_sha256', iterations = ? WHERE id = ?",
-                    (new_salt, new_hash, PBKDF2_ROUNDS, user_id)
-                )
-            except Exception:
-                pass
-        return True
+    try:
+        _, digest_hex = hash_password(password, salt_hex, iterations=PBKDF2_ROUNDS)
+        if hmac.compare_digest(digest_hex, hash_hex):
+            return True
+    except Exception:
+        pass
+
+    try:
+        _, digest_hex_100k = hash_password(password, salt_hex, iterations=100000)
+        if hmac.compare_digest(digest_hex_100k, hash_hex):
+            if user_id:
+                try:
+                    new_salt, new_hash = hash_password(password, iterations=PBKDF2_ROUNDS)
+                    execute(
+                        "UPDATE users SET salt = ?, password_hash = ?, iterations = ?, hash_algo = 'pbkdf2_sha256' WHERE id = ?",
+                        (new_salt, new_hash, PBKDF2_ROUNDS, user_id)
+                    )
+                except Exception:
+                    pass
+            return True
+    except Exception:
+        pass
 
     return False
-
 
 def is_admin_user(user_or_session, email=None):
     """
@@ -336,6 +347,9 @@ def get_user_role(user_or_session):
     if not user_or_session:
         return "viewer"
     if isinstance(user_or_session, dict):
+        role = user_or_session.get("role")
+        if role in ("admin", "manager", "member", "viewer"):
+            return role
         u_id = user_or_session.get("id") or user_or_session.get("user_id")
         if u_id:
             row = get_one("SELECT role, is_admin FROM users WHERE id = ? LIMIT 1", (u_id,))
@@ -343,13 +357,9 @@ def get_user_role(user_or_session):
                 if row.get("role") == "admin" or row.get("is_admin") == 1:
                     return "admin"
                 return row.get("role") or "member"
-        role = user_or_session.get("role")
-        if role in ("admin", "manager", "member", "viewer"):
-            return role
     if is_admin_user(user_or_session):
         return "admin"
     return "member"
-
 
 def is_manager_or_admin(user_or_session):
     """사용자가 Manager(부서장) 이상(Admin/Master 포함)의 관리 권한을 가지고 있는지 판정한다."""
@@ -363,10 +373,10 @@ def can_view_record(user_or_session, record):
     """
     레코드 열람 권한 판정:
     - admin: 모든 레코드 열람 가능
-    - is_private == 1 (비공개/급여/인사): 작성자, 담당자, 부서장(manager), admin만 열람 가능 (타 부서는 차단)
+    - is_private == 1: 작성자, 담당자, 부서장(manager), admin만 열람 가능
     - manager: 자기 부서 전체 + 타 부서의 일반 공개 레코드 열람 가능
     - member / viewer: 자기 부서 레코드 또는 본인이 담당자/참여자로 지정된 레코드 열람 가능
-    (보안 강화: 부분 문자열 매칭 취약점을 제거하고 정확한 식별자 매칭 사용)
+    (보안 강화: 동명이인 타 부서 충돌 방지 및 정확한 식별자 매칭)
     """
     if not user_or_session:
         return False
@@ -385,29 +395,33 @@ def can_view_record(user_or_session, record):
     rec_assignee = (record.get("assignee_name") or record.get("assignee") or "").strip().lower()
     rec_assignee_email = (record.get("assignee_email") or "").strip().lower()
     
-    # 참여자 목록 분리 (쉼표, 세미콜론, 줄바꿈)
     raw_participants = record.get("participants") or ""
     parts = [p.strip().lower() for p in re.split(r"[,;/\n]+", str(raw_participants)) if p.strip()]
 
-    # 정확한 담당자/참여자 매칭 (부분 문자열 매칭 취약점 완전 방어)
+    is_same_dept = bool(u_dept and u_dept == rec_dept)
+    is_private = bool(record.get("is_private"))
+
+    # 정확한 담당자/참여자 매칭:
+    # 비공개 레코드(is_private=1)는 동명이인 타 부서 유출 방지를 위해 이름 단독 매칭 시 동일 부서 필수 검증
     is_involved = False
     if u_id and rec_assignee_id and str(u_id) == str(rec_assignee_id):
-        is_involved = True
-    elif u_name and u_name == rec_assignee:
         is_involved = True
     elif u_username and u_username == rec_assignee:
         is_involved = True
     elif u_email and rec_assignee_email and u_email == rec_assignee_email:
         is_involved = True
-    elif u_name and u_name in parts:
-        is_involved = True
+    elif u_name and u_name == rec_assignee:
+        if not is_private or is_same_dept or not rec_dept:
+            is_involved = True
     elif u_username and u_username in parts:
         is_involved = True
+    elif u_name and u_name in parts:
+        if not is_private or is_same_dept or not rec_dept:
+            is_involved = True
 
     is_same_dept = bool(u_dept and u_dept == rec_dept)
     is_private = bool(record.get("is_private"))
 
-    # 비공개 레코드 격리
     if is_private:
         if is_involved:
             return True
@@ -415,17 +429,14 @@ def can_view_record(user_or_session, record):
             return True
         return False
 
-    # 일반 레코드
     if is_same_dept:
         return True
     if is_involved:
         return True
     if role == "manager":
-        # 타 부서라도 비공개가 아닌 일반 레코드는 협업을 위해 열람 허용
         return True
 
     return False
-
 
 def can_modify_record(user_or_session, record):
     """
@@ -433,7 +444,7 @@ def can_modify_record(user_or_session, record):
     - viewer는 읽기 전용 역할로 무조건 차단 (403)
     - admin은 전체 수정 가능
     - manager는 자기 부서 레코드 수정 가능
-    - member는 자신이 담당자인 레코드만 수정 가능
+    - member는 자신이 담당자인 레코드만 수정 가능 (동명이인 타 부서 격리)
     """
     if not user_or_session:
         return False
@@ -456,19 +467,19 @@ def can_modify_record(user_or_session, record):
         return True
     if u_id and rec_assignee_id and str(u_id) == str(rec_assignee_id):
         return True
-    if u_name and u_name == rec_assignee:
-        return True
     if u_username and u_username == rec_assignee:
         return True
+    if u_name and u_name == rec_assignee:
+        is_private = bool(record.get("is_private"))
+        if not is_private or u_dept == rec_dept or not rec_dept:
+            return True
 
     return False
-
 
 def visible_records(session, records=None):
     """
     단일 권한 진실의 원천 (Single Source of Truth).
-    주어진 세션이 열람 가능한 레코드 목록만 안전하게 필터링하여 반환한다.
-    목록 조회, 검색, 통계, 보고서, 챗봇 도구, RAG 벡터 검색 등 모든 경로에서 공통 사용.
+    N+1 쿼리 방지: role을 1회만 계산하고 모든 레코드 필터링에 재사용한다.
     """
     if not session:
         return []
@@ -477,8 +488,10 @@ def visible_records(session, records=None):
         records = read_records()
     if is_admin_user(session):
         return list(records)
-    return [r for r in records if can_view_record(session, r)]
-
+    role = get_user_role(session)
+    sess_cached = dict(session)
+    sess_cached["role"] = role
+    return [r for r in records if can_view_record(sess_cached, r)]
 
 def can_view_pim_price(user_or_session):
     """PIM 제품 기준 가격 열람 권한: Admin 및 영업/경영 부서만 허용 (일반 엔지니어/타 부서에는 마스킹)"""
@@ -600,10 +613,16 @@ def clear_login_failures(ip, identifier):
         if key in _login_failures:
             del _login_failures[key]
 
+def hash_session_token(token: str) -> str:
+    """Computes SHA-256 hash of session token for secure database storage."""
+    if not token:
+        return ""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
 def create_session(name_or_user_id, org=None, email=None, user_id=None):
     """
     새 로그인 세션을 생성한다.
-    user_id를 필수 외래키로 저장하여 세션 위조 및 다중 동명이인 권한 혼동을 방지한다.
+    세션 토큰을 SHA-256으로 해시하여 DB에 안전하게 저장한다 (Plaintext 세션 노출 방지).
     """
     u_id = user_id
     name = str(name_or_user_id or "")
@@ -629,55 +648,63 @@ def create_session(name_or_user_id, org=None, email=None, user_id=None):
             email = email or u_row.get("email")
 
     token = secrets.token_hex(24)
+    token_hash = hash_session_token(token)
     ts = time.time()
     is_admin = is_admin_user(u_id or name)
 
     execute(
-        """INSERT INTO sessions(token, user_id, user_name, user_dept_id, user_email, is_admin, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (token, u_id, name, org or "", email or "", 1 if is_admin else 0, ts)
+        """INSERT INTO sessions(token, user_id, user_name, user_dept_id, user_email, is_admin, created_at, last_active_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (token_hash, u_id, name, org or "", email or "", 1 if is_admin else 0, ts, ts)
     )
     return token
 
 def get_session(token):
-    """토큰으로 세션 정보를 반환한다 (users 테이블과 실시간 JOIN하여 최신 role 및 계정 비활성화 검증)."""
+    """토큰으로 세션 정보를 반환한다 (SHA-256 해시 조회 및 슬라이딩 세션 갱신)."""
     if not token:
         return None
 
+    token_hash = hash_session_token(token)
     row = get_one(
-        """SELECT s.token, s.user_id, s.user_name, s.user_dept_id, s.user_email, s.created_at,
+        """SELECT s.token, s.user_id, s.user_name, s.user_dept_id, s.user_email, s.created_at, s.last_active_at,
                   u.id AS u_id, u.name AS u_name, u.username AS u_username, u.dept_id AS u_dept_id,
                   u.email AS u_email, u.role AS u_role, u.is_admin AS u_is_admin,
                   u.disabled AS u_disabled, u.status AS u_status
            FROM sessions s
            LEFT JOIN users u ON (s.user_id IS NOT NULL AND s.user_id = u.id)
                              OR (s.user_id IS NULL AND LOWER(s.user_name) = LOWER(u.name) AND LOWER(s.user_dept_id) = LOWER(u.dept_id))
-           WHERE s.token = ?""",
-        (token,)
+           WHERE s.token = ? OR s.token = ?""",
+        (token_hash, token)
     )
     if not row:
         return None
 
     created_at = row.get("created_at") or 0
+    last_active = row.get("last_active_at") or created_at
     now = time.time()
     ttl = get_session_ttl_seconds()
 
-    # Session TTL 만료 검증
-    if now - created_at > ttl:
+    # 슬라이딩 유효기간(Sliding Expiration): 마지막 활동 후 ttl 경과 시 만료
+    if now - last_active > ttl:
         try:
-            execute("DELETE FROM sessions WHERE token = ?", (token,))
+            execute("DELETE FROM sessions WHERE token = ? OR token = ?", (token_hash, token))
         except Exception:
             pass
         return None
 
-    # 사용자가 DB에 없거나, 잠금/비활성화(disabled=1)되었거나, 승인 대기/반려 상태(status != 'active')인 경우 즉시 None 반환
+    # 활동 중인 세션은 5분마다 last_active_at 슬라이딩 갱신
+    if now - last_active > 300:
+        try:
+            execute("UPDATE sessions SET last_active_at = ? WHERE token = ? OR token = ?", (now, token_hash, token))
+        except Exception:
+            pass
+
     u_id = row.get("u_id")
     if not u_id:
         return None
     if row.get("u_disabled") or row.get("u_status") != "active":
         return None
 
-    # 실시간 DB role 적용 (viewer, member, manager, admin)
     user_role = row.get("u_role") or "member"
     is_admin = bool(user_role == "admin" or row.get("u_is_admin") == 1)
     if is_admin:
@@ -697,15 +724,30 @@ def get_session(token):
         "disabled": row.get("u_disabled") or 0,
         "status": row.get("u_status") or "active",
         "ts": created_at,
+        "last_active": last_active
     }
 
 def delete_session(token):
     """단일 세션 만료 (로그아웃)."""
     if token:
+        token_hash = hash_session_token(token)
         try:
-            execute("DELETE FROM sessions WHERE token = ?", (token,))
+            execute("DELETE FROM sessions WHERE token = ? OR token = ?", (token_hash, token))
         except Exception:
             pass
+
+def rotate_session(old_token):
+    """권한 변경 또는 주기적 세션 토큰 교체 (Session Rotation)."""
+    sess = get_session(old_token)
+    if not sess:
+        return None
+    delete_session(old_token)
+    return create_session(
+        name_or_user_id=sess["name"],
+        org=sess["org"],
+        email=sess["email"],
+        user_id=sess["id"]
+    )
 
 def delete_all_user_sessions(user_id_or_name):
     """해당 사용자의 모든 기기 세션 강제 만료 (Logout from all devices)."""

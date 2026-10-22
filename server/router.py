@@ -487,7 +487,10 @@ def handle_get_notifications_stream(handler, parsed, ip):
     handler._send_sse_event({"event": "connected", "user": user_name, "time": datetime.now().isoformat()})
 
     try:
-        while True:
+        cycles = 0
+        max_cycles = 45  # 15 minutes max per SSE connection to cycle HTTP threads
+        while cycles < max_cycles:
+            cycles += 1
             try:
                 event = q.get(timeout=20)
                 handler._send_sse_event({"event": event["type"], "data": event["data"]})
@@ -1129,20 +1132,23 @@ def handle_get_local_attachment(handler, parsed, ip):
     safe_inline_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf"}
     disp_type = "inline" if (preview and ext in safe_inline_exts) else "attachment"
     
-    try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-        handler.send_response(200)
-        handler.send_header("Content-Type", content_type)
-        handler.send_header("Content-Length", str(len(data)))
-        handler.send_header("Content-Disposition", f"{disp_type}; filename*=UTF-8''{urllib.parse.quote(os.path.basename(file_path))}")
-        handler.send_header("X-Content-Type-Options", "nosniff")
-        handler.send_header("Content-Security-Policy", "sandbox")
-        handler.send_header("Cache-Control", "no-cache")
-        handler.end_headers()
-        handler.wfile.write(data)
-    except Exception as e:
-        handler._send_json(500, {"ok": False, "error": str(e)})
+    if hasattr(handler, "_stream_file"):
+        handler._stream_file(file_path, content_type, download_name=os.path.basename(file_path), inline=(disp_type == "inline"), extra_headers=[("Content-Security-Policy", "sandbox")])
+    else:
+        try:
+            with open(file_path, "rb") as f:
+                data = f.read()
+            handler.send_response(200)
+            handler.send_header("Content-Type", content_type)
+            handler.send_header("Content-Length", str(len(data)))
+            handler.send_header("Content-Disposition", f"{disp_type}; filename*=UTF-8''{urllib.parse.quote(os.path.basename(file_path))}")
+            handler.send_header("X-Content-Type-Options", "nosniff")
+            handler.send_header("Content-Security-Policy", "sandbox")
+            handler.send_header("Cache-Control", "no-cache")
+            handler.end_headers()
+            handler.wfile.write(data)
+        except Exception as e:
+            handler._send_json(500, {"ok": False, "error": str(e)})
 
 def handle_post_issue_comment(handler, raw_body, ip):
     session = handler._get_session_or_401()
@@ -2553,7 +2559,10 @@ from handlers.setup_handler import (
 
 def match_get(path):
     """Dispatch GET request to appropriate handler. Returns (type, handler_or_path, content_type)"""
-    needs_setup = check_needs_setup()
+    # Only evaluate setup check on entry/auth pages to avoid N+1 COUNT(*) queries on static assets and API requests
+    needs_setup = False
+    if path in ("/", "/index.html", "/login", "/login.html", "/setup", "/setup.html", "/api/setup/status"):
+        needs_setup = check_needs_setup()
 
     if path == "/" or path == "/index.html":
         if needs_setup:
@@ -2569,8 +2578,8 @@ def match_get(path):
         return ("file", os.path.join(WEB_DIR, "setup.html"), "text/html; charset=utf-8")
     elif path == "/api/setup/status":
         return ("handler", handle_get_setup_status, None)
-    elif path == "/logo-preview" or path == "/logo-preview.html":
-        return ("file", os.path.join(WEB_DIR, "logo-preview.html"), "text/html; charset=utf-8")
+
+
     elif path == "/favicon.svg":
         return ("file", os.path.join(WEB_DIR, "favicon.svg"), "image/svg+xml")
     elif path == "/favicon.ico":
@@ -2583,8 +2592,8 @@ def match_get(path):
         return ("handler", handle_account_me, None)
     elif path in ("/api/account/csrf", "/api/auth/csrf"):
         return ("handler", handle_account_csrf, None)
-    elif path in ("/api/account/logout", "/api/auth/logout"):
-        return ("handler", handle_account_logout_get, None)
+
+
     elif path == "/api/members":
         return ("handler", handle_get_members, None)
     elif path == "/api/categories":
@@ -2683,7 +2692,7 @@ def match_post(path):
         return handle_account_register
     elif path in ("/api/account/login", "/api/auth/login"):
         return handle_account_login
-    elif path in ("/api/account/logout", "/api/auth/logout"):
+
         return handle_account_logout
     elif path in ("/api/account/logout-all", "/api/auth/logout-all"):
         return handle_account_logout_all

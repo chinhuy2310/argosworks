@@ -177,60 +177,104 @@ class ArgosHandler(BaseHTTPRequestHandler):
         self._current_session = session
         return session
 
-    def _send_file(self, path, content_type):
+    def _stream_file(self, path, content_type, download_name=None, inline=False, extra_headers=None):
+        """
+        Streams file in 64KB chunks directly to client socket.
+        Supports HTTP Range requests (RFC 7233) for resumable downloads and media/PDF seeking.
+        Prevents thread memory exhaustion (OOM) on large file downloads.
+        """
         try:
             stat = os.stat(path)
-            # Tạo ETag dựa trên mtime và size của file
-            etag = f'"{int(stat.st_mtime)}-{stat.st_size}"'
-            
-            # Kiểm tra If-None-Match từ client để trả về 304 Not Modified
+            file_size = stat.st_size
+            etag = f'"{int(stat.st_mtime)}-{file_size}"'
+
             if_none_match = self.headers.get("If-None-Match")
             if if_none_match and if_none_match.strip() == etag:
                 self.send_response(304)
                 self.end_headers()
                 return
 
+            range_header = self.headers.get("Range")
+            start_byte = 0
+            end_byte = file_size - 1
+            is_range = False
+
+            if range_header and range_header.startswith("bytes="):
+                ranges = range_header[6:].split("-")
+                try:
+                    if ranges[0]:
+                        start_byte = int(ranges[0])
+                    if len(ranges) > 1 and ranges[1]:
+                        end_byte = min(int(ranges[1]), file_size - 1)
+                    if start_byte <= end_byte and start_byte < file_size:
+                        is_range = True
+                except ValueError:
+                    pass
+
+            disp_type = "inline" if inline else "attachment"
+            content_length = (end_byte - start_byte + 1) if is_range else file_size
+
+            if is_range:
+                self.send_response(206)
+                self.send_header("Content-Range", f"bytes {start_byte}-{end_byte}/{file_size}")
+            else:
+                self.send_response(200)
+
+            self.send_header("Content-Type", content_type or "application/octet-stream")
+            self.send_header("Content-Length", str(content_length))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("ETag", etag)
+
+            if download_name:
+                self.send_header("Content-Disposition", f"{disp_type}; filename*=UTF-8''{urllib.parse.quote(download_name)}")
+
+            # Hardened Security Headers on all file responses
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("X-Frame-Options", "SAMEORIGIN")
+            self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+
+            # Static asset cache: no-cache, must-revalidate allows 304 while ensuring instant updates on deployment
+            is_static_asset = any(p in path.replace("\\", "/") for p in ["/css/", "/js/", "/assets/", "/images/", "favicon.svg"])
+            if is_static_asset:
+                self.send_header("Cache-Control", "no-cache, must-revalidate")
+            else:
+                self.send_header("Cache-Control", "no-store")
+
+            if extra_headers:
+                for k, v in extra_headers:
+                    self.send_header(k, v)
+
+            self.end_headers()
+
+            # Stream file in 64KB chunks
+            chunk_size = 64 * 1024
             with open(path, "rb") as f:
-                body = f.read()
+                if is_range and start_byte > 0:
+                    f.seek(start_byte)
+                remaining = content_length
+                while remaining > 0:
+                    read_len = min(remaining, chunk_size)
+                    buf = f.read(read_len)
+                    if not buf:
+                        break
+                    self.wfile.write(buf)
+                    remaining -= len(buf)
+            self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
         except FileNotFoundError:
             self._send_json(404, {"ok": False, "error": "not found"})
-            return
+        except Exception as e:
+            self._send_json(500, {"ok": False, "error": str(e)})
 
-        self.send_response(200)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("ETag", etag)
-
-        # File tĩnh (css, js, assets, images) cho cache 1 ngày để tăng tốc độ tải mạng LAN
-        is_static_asset = any(p in path.replace("\\", "/") for p in ["/css/", "/js/", "/assets/", "/images/", "favicon.svg"])
-        if is_static_asset:
-            self.send_header("Cache-Control", "public, max-age=86400")
-        else:
-            self.send_header("Cache-Control", "no-cache")
-
-        self.end_headers()
-        self.wfile.write(body)
+    def _send_file(self, path, content_type):
+        self._stream_file(path, content_type, inline=True)
 
     def _send_attachment(self, path, download_name):
-        """첨부파일을 '다운로드'로 내려준다(Content-Disposition: attachment) —
-        _send_file은 화면 리소스(index.html 등)를 그대로 표시하는 용도라 이것과 다르다."""
-        try:
-            with open(path, "rb") as f:
-                body = f.read()
-        except FileNotFoundError:
-            self._send_json(404, {"ok": False, "error": "not found"})
-            return
         content_type, _ = mimetypes.guess_type(download_name)
-        self.send_response(200)
-        self.send_header("Content-Type", content_type or "application/octet-stream")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Content-Disposition",
-                          "attachment; filename*=UTF-8''" + urllib.parse.quote(download_name))
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Content-Security-Policy", "sandbox")
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+        self._stream_file(path, content_type or "application/octet-stream", download_name=download_name, inline=False, extra_headers=[
+            ("Content-Security-Policy", "sandbox")
+        ])
 
     def _start_sse(self):
         """SSE(Server-Sent Events) 스트리밍 응답을 시작한다."""

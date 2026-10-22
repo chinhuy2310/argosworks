@@ -25,6 +25,18 @@ def handle_account_check(handler, raw_body, ip):
         handler._send_json(400, {"ok": False, "error": "이름과 소속을 입력해주세요."})
         return
     user = get_one("SELECT 1 FROM users WHERE name = ? AND dept_id = ? LIMIT 1", (name, org))
+    # Prevent unauthenticated user enumeration: If public registration is disabled,
+    # always direct caller to standard password verification stage
+    from config import load_config
+    cfg = load_config()
+    allow_pub = cfg.get("allow_public_register", False)
+    if os.environ.get("ALLOW_PUBLIC_REGISTER"):
+        allow_pub = os.environ.get("ALLOW_PUBLIC_REGISTER", "").strip().lower() in ("1", "true", "yes", "on")
+
+    if not allow_pub:
+        handler._send_json(200, {"ok": True, "exists": True})
+        return
+
     handler._send_json(200, {"ok": True, "exists": bool(user)})
 
 # ---- /api/account/register (POST) — 계정 발급 요청 (관리자 승인 워크플로) ----
@@ -108,7 +120,8 @@ def handle_account_register(handler, raw_body, ip):
             if "unique" in err_str or "duplicate" in err_str:
                 handler._send_json(409, {"ok": False, "exists": True, "error": "이미 사용 중인 ID 또는 이메일입니다."})
                 return
-            handler._send_json(500, {"ok": False, "error": f"계정 등록 실패: {e}"})
+            log_line("[Auth] Account registration error:", e)
+            handler._send_json(500, {"ok": False, "error": "계정 등록 처리 중 오류가 발생했습니다. 관리자에게 문의하세요."})
             return
 
     # Trigger Admin notification + Webhook
@@ -159,7 +172,7 @@ def handle_account_login(handler, raw_body, ip):
         return
 
     acc = get_user_by_login(login_id, org)
-    if not acc or not verify_password(password, acc.get("salt", ""), acc.get("password_hash", ""), user_id=acc.get("id")):
+    if not acc or not verify_password(password, acc.get("salt", ""), acc.get("password_hash", ""), iterations=acc.get("iterations"), user_id=acc.get("id")):
         record_login_failure(ip, login_id)
         access_log(ip, "account_login", 401, "%s|%s" % (login_id, org))
         from services.audit_logger import log_audit

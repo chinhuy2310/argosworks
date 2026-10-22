@@ -238,7 +238,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_dept_id VARCHAR(64) NOT NULL,
     user_email VARCHAR(255) NOT NULL DEFAULT '',
     is_admin INTEGER NOT NULL DEFAULT 0,
-    created_at DOUBLE PRECISION NOT NULL
+    created_at DOUBLE PRECISION NOT NULL,
+    last_active_at DOUBLE PRECISION NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);

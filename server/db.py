@@ -269,9 +269,23 @@ if ENGINE == "sqlite":
                             )
                             WHERE user_id IS NULL;
                         """)
+                    if "last_active_at" not in s_cols:
+                        conn.execute("ALTER TABLE sessions ADD COLUMN last_active_at REAL DEFAULT 0;")
+                        conn.execute("UPDATE sessions SET last_active_at = created_at WHERE last_active_at = 0;")
 
                 conn.execute("INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (3, 'v2.2_legacy_column_alignment');")
                 logger.info("[db] Migration v3 (legacy alignment) applied.")
+
+            # Migration v4: Session token security and sliding expiration column
+            if 4 not in applied_migrations:
+                cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'")
+                if cur.fetchone():
+                    s_cols = {row[1] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()}
+                    if "last_active_at" not in s_cols:
+                        conn.execute("ALTER TABLE sessions ADD COLUMN last_active_at REAL DEFAULT 0;")
+                        conn.execute("UPDATE sessions SET last_active_at = created_at WHERE last_active_at = 0;")
+                conn.execute("INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (4, 'v2.3_session_sliding_ttl');")
+                logger.info("[db] Migration v4 (sessions last_active_at) applied.")
         except sqlite3.Error as e:
             logger.error(f"Database initialization failed: {e}")
             raise
