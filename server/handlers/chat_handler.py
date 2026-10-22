@@ -496,9 +496,20 @@ def handle_chat_stream(handler, raw_body, ip):
         ping_thread = threading.Thread(target=_keep_alive, daemon=True)
         ping_thread.start()
 
+        # Pass full authenticated session (id, role, name, org, email) for proper RBAC enforcement
+        current_user_ctx = {
+            "id": session.get("id") or session.get("user_id"),
+            "name": user_name,
+            "org": user_org,
+            "dept_id": user_org,
+            "role": session.get("role", "member"),
+            "is_admin": session.get("role") == "admin",
+            "email": session.get("email", "")
+        }
+
         answer = run_agent_conversation(
             messages=ai_messages,
-            current_user={"name": user_name, "org": user_org},
+            current_user=current_user_ctx,
             cfg=cfg,
             lang=effective_lang,
             on_status_update=on_status,
@@ -669,7 +680,16 @@ def handle_execute_action(handler, raw_body, ip):
     
     action_type = body.get("action_type", "")
     cfg = handler.cfg
-    current_user = {"name": session["name"], "org": session.get("org", "lab")}
+    # Pass full authenticated session (id, role, name, org, email) for proper RBAC & license checks
+    current_user = {
+        "id": session.get("id") or session.get("user_id"),
+        "name": session["name"],
+        "org": session.get("org", "lab"),
+        "dept_id": session.get("org", "lab"),
+        "role": session.get("role", "member"),
+        "is_admin": session.get("role") == "admin",
+        "email": session.get("email", "")
+    }
     
     # Map action_type to tool name
     action_tool_map = {

@@ -101,11 +101,23 @@ class ArgosHandler(BaseHTTPRequestHandler):
         except Exception:
             peer_ip = self.address_string()
 
-        trusted_proxies_cfg = os.environ.get("TRUSTED_PROXIES", "127.0.0.1,::1,localhost")
+        # Defaults trust local connections as well as Docker bridge/container networks (caddy reverse proxy)
+        trusted_proxies_cfg = os.environ.get("TRUSTED_PROXIES", "127.0.0.1,::1,localhost,caddy,argos-proxy")
         trusted_proxies = {p.strip() for p in trusted_proxies_cfg.split(",") if p.strip()}
 
-        # Only trust proxy headers when request comes from a trusted reverse proxy
-        if peer_ip in trusted_proxies or "0.0.0.0" in trusted_proxies:
+        # Check if direct peer IP or peer hostname matches trusted proxies or Docker private subnet (172.16.0.0/12)
+        is_trusted = (peer_ip in trusted_proxies or "0.0.0.0" in trusted_proxies)
+        if not is_trusted:
+            try:
+                import ipaddress
+                ip_obj = ipaddress.ip_address(peer_ip)
+                # Docker internal networks are private IPs (172.16.0.0 - 172.31.255.255, 10.0.0.0/8, 192.168.0.0/16)
+                if ip_obj.is_private:
+                    is_trusted = True
+            except Exception:
+                pass
+
+        if is_trusted:
             xff = self.headers.get("X-Forwarded-For")
             if xff:
                 parts = [p.strip() for p in xff.split(",")]

@@ -90,13 +90,14 @@ class TestEnterpriseSetupWizard(unittest.TestCase):
         self.assertEqual(handler.status_code, 400)
         self.assertFalse(handler.response_body.get("ok"))
 
-        # 2. Trial key
-        handle_post_setup_verify_license(handler, json.dumps({"license_key": "TRIAL"}).encode(), "127.0.0.1")
+        # 2. Trial key (Ed25519 signed)
+        trial_key = generate_signed_license_key("Enterprise Trial", 25, "2099-12-31", ["canvas", "rag"])
+        handle_post_setup_verify_license(handler, json.dumps({"license_key": trial_key}).encode(), "127.0.0.1")
         self.assertEqual(handler.status_code, 200)
         self.assertTrue(handler.response_body.get("ok"))
         self.assertEqual(handler.response_body["license"]["seats"], 25)
 
-        # 3. Valid Signed HMAC key
+        # 3. Valid Signed Ed25519 key
         signed_key = generate_signed_license_key("Acme Enterprise", 100, "2030-12-31", ["canvas", "rag"])
         handle_post_setup_verify_license(handler, json.dumps({"license_key": signed_key}).encode(), "127.0.0.1")
         self.assertEqual(handler.status_code, 200)
@@ -109,8 +110,9 @@ class TestEnterpriseSetupWizard(unittest.TestCase):
 
         # Complete setup
         handler = MockHTTPHandler()
+        trial_key = generate_signed_license_key("Enterprise Trial", 25, "2099-12-31", ["canvas", "rag"])
         setup_payload = {
-            "license_key": "TRIAL",
+            "license_key": trial_key,
             "company_name": "Test Acme Corp",
             "admin": {
                 "username": "superadmin",

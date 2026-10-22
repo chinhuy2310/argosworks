@@ -87,6 +87,9 @@ class MockHTTPHandler:
             return None
         return self.session
 
+    def _get_session_optional(self):
+        return self.session
+
     def _send_json(self, status, data, extra_headers=None):
         self.status_code = status
         self.response_body = data
@@ -111,11 +114,17 @@ class TestDirection2ApprovalWorkflow(unittest.TestCase):
         init_db()
 
     def setUp(self):
+        self._prev_allow_pub = os.environ.get("ALLOW_PUBLIC_REGISTER")
+        os.environ["ALLOW_PUBLIC_REGISTER"] = "true"
         # Clean test users if left over
         execute("DELETE FROM users WHERE username IN ('test_applicant1', 'test_applicant2')")
         execute("DELETE FROM notifications WHERE content LIKE '%test_applicant%' OR content LIKE '%Applicant%'")
 
     def tearDown(self):
+        if self._prev_allow_pub is not None:
+            os.environ["ALLOW_PUBLIC_REGISTER"] = self._prev_allow_pub
+        else:
+            os.environ.pop("ALLOW_PUBLIC_REGISTER", None)
         execute("DELETE FROM users WHERE username IN ('test_applicant1', 'test_applicant2')")
         execute("DELETE FROM notifications WHERE content LIKE '%test_applicant%' OR content LIKE '%Applicant%'")
 

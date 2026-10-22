@@ -16,6 +16,10 @@ services:
       - PORT=8080
       - ARGOS_MASTER_KEY=${ARGOS_MASTER_KEY:?bắt buộc đặt ARGOS_MASTER_KEY để mã hóa bí mật}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-argos_admin}:${POSTGRES_PASSWORD:?bắt buộc đặt}@postgres:5432/${POSTGRES_DB:-argos_works}
+      - ALLOW_PUBLIC_REGISTER=${ALLOW_PUBLIC_REGISTER:-false}
+      - SESSION_TTL_HOURS=${SESSION_TTL_HOURS:-24}
+      - TRUSTED_PROXIES=${TRUSTED_PROXIES:-127.0.0.1,::1,localhost,caddy,argos-proxy}
+      - ARGOS_BOOTSTRAP_TOKEN=${ARGOS_BOOTSTRAP_TOKEN:-}
     volumes:
       # Persistent SQLite CSDL, backups, attachments, vectors
       - ./data:/app/data

@@ -68,14 +68,26 @@ def handle_post_setup_complete(handler, raw_body, ip):
     2단계: Master Admin 계정 생성 (status='active', role='admin', disabled=0)
     3단계: 회사명 및 기본 부서 등록
     """
-    if not check_needs_setup():
-        handler._send_json(403, {"ok": False, "error": "시스템 초기 설정이 이미 완료되었습니다."})
-        return
-
     try:
         body = json.loads(raw_body.decode("utf-8")) if raw_body else {}
     except Exception:
         body = {}
+
+    # Bootstrap Token Enforcement: If ARGOS_BOOTSTRAP_TOKEN is configured in environment, verify it
+    required_bootstrap = os.environ.get("ARGOS_BOOTSTRAP_TOKEN", "").strip()
+    if required_bootstrap:
+        provided_bootstrap = (body.get("bootstrap_token") or handler.headers.get("X-Bootstrap-Token") or "").strip()
+        import hmac
+        if not hmac.compare_digest(provided_bootstrap, required_bootstrap):
+            handler._send_json(403, {
+                "ok": False,
+                "error": "시스템 초기 설정을 완료하려면 유효한 부트스트랩 토큰(Bootstrap Token)이 필요합니다."
+            })
+            return
+
+    if not check_needs_setup():
+        handler._send_json(403, {"ok": False, "error": "시스템 초기 설정이 이미 완료되었습니다."})
+        return
 
     license_key = (body.get("license_key") or "").strip()
     admin_info = body.get("admin") or {}
@@ -122,13 +134,20 @@ def handle_post_setup_complete(handler, raw_body, ip):
     if not admin_dept_id or admin_dept_id not in dept_ids:
         admin_dept_id = "mgmt" if "mgmt" in dept_ids else dept_ids[0]
 
-    # 4. 데이터베이스 트랜잭션 일괄 저장
+    # 4. 원자적(Atomic) 검사 및 트랜잭션 일괄 저장 (Race condition 방지)
     from services.auth import hash_password, create_session
     salt, pwd_hash = hash_password(password)
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def _do_setup(conn):
         cur = conn.cursor()
+
+        # Atomic Race check: Ensure no user was registered concurrently
+        cur.execute("SELECT COUNT(*) AS c FROM users")
+        row = cur.fetchone()
+        user_count = row[0] if isinstance(row, (tuple, list)) else row.get("c", 0)
+        if user_count > 0:
+            raise RuntimeError("시스템 초기 설정이 이미 완료되었습니다 (다른 관리자가 등록을 마쳤습니다).")
 
         # (1) 부서 및 카드 시퀀스 등록
         for d in departments:
@@ -155,7 +174,15 @@ def handle_post_setup_complete(handler, raw_body, ip):
             VALUES (?, ?, ?, ?, ?, ?, 1, 'admin', 0, 'active', ?, 'pbkdf2_sha256', 600000)
         """, (username, name, admin_dept_id, email, salt, pwd_hash, now_str))
 
-    transaction(_do_setup)
+    try:
+        transaction(_do_setup)
+    except RuntimeError as re:
+        handler._send_json(403, {"ok": False, "error": str(re)})
+        return
+    except Exception as e:
+        handler._send_json(500, {"ok": False, "error": f"초기 설정 저장 실패: {str(e)}"})
+        return
+
     admin_user = get_one("SELECT id, name, dept_id, email, role FROM users WHERE username = ? LIMIT 1", (username,))
 
     # 5. 라이선스 정보 활성화 반영

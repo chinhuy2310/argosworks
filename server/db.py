@@ -65,8 +65,36 @@ def _translate_sql(sql):
         if "ON CONFLICT" not in sql.upper():
             sql = sql.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
 
-    # 4. INSERT OR REPLACE → INSERT ... ON CONFLICT (pk) DO UPDATE
-    if re.search(r"INSERT\s+OR\s+REPLACE\s+INTO", sql, re.IGNORECASE):
+    # 4. INSERT OR REPLACE → INSERT ... ON CONFLICT (pk) DO UPDATE SET col = EXCLUDED.col
+    m_replace = _RE_INSERT_OR_REPLACE.search(sql)
+    if m_replace:
+        table = m_replace.group(1).lower()
+        cols_str = m_replace.group(2)
+        vals_str = m_replace.group(3)
+        cols = [c.strip() for c in cols_str.split(",")]
+        # Standard primary key mapping for ARGOS enterprise tables
+        table_pk_map = {
+            "record_jira": "record_id",
+            "card_sequences": "dept_id",
+            "departments": "id",
+            "users": "id",
+            "records": "id",
+            "products": "id",
+            "license_info": "id",
+            "schema_migrations": "version",
+            "product_categories": "id",
+            "document_embeddings": "doc_id",
+        }
+        pk = table_pk_map.get(table, cols[0])
+        update_cols = [c for c in cols if c.lower() != pk.lower()]
+        if update_cols:
+            update_clause = ", ".join([f"{c} = EXCLUDED.{c}" for c in update_cols])
+            conflict_clause = f"ON CONFLICT ({pk}) DO UPDATE SET {update_clause}"
+        else:
+            conflict_clause = f"ON CONFLICT ({pk}) DO NOTHING"
+
+        sql = _RE_INSERT_OR_REPLACE.sub(f"INSERT INTO {m_replace.group(1)} ({cols_str}) VALUES ({vals_str}) {conflict_clause}", sql)
+    elif re.search(r"INSERT\s+OR\s+REPLACE\s+INTO", sql, re.IGNORECASE):
         sql = re.sub(r"INSERT\s+OR\s+REPLACE\s+INTO", "INSERT INTO", sql, flags=re.IGNORECASE)
         if "ON CONFLICT" not in sql.upper():
             sql = sql.rstrip().rstrip(";") + " ON CONFLICT DO NOTHING"
@@ -134,10 +162,7 @@ if ENGINE == "sqlite":
                 conn.executescript(schema_script)
                 logger.info("Canonical schema applied successfully.")
 
-                conn.execute("""
-                    INSERT OR IGNORE INTO license_info (id, customer_name, license_key, max_seats, expiry_date, modules_json, is_active)
-                    VALUES (1, 'Argos Enterprise Trial', 'ARGOS-TRIAL-COMMERCIAL-2026', 25, '2099-12-31', '["canvas","rag","jira","pim","schedule","audit"]', 1);
-                """)
+
 
                 conn.execute("""
                     INSERT OR IGNORE INTO schema_migrations (version, name)
@@ -471,13 +496,7 @@ else:
                 """)
                 logger.info("[db/postgres] Migration v2 (users unique constraints) applied.")
 
-            # Seed default license info safely
-            cur.execute("""
-                INSERT INTO license_info (id, customer_name, license_key, max_seats, expiry_date, modules_json, is_active)
-                VALUES (1, 'Argos Enterprise Trial', 'ARGOS-TRIAL-COMMERCIAL-2026', 25, '2099-12-31',
-                        '["canvas","rag","jira","pim","schedule","audit"]', 1)
-                ON CONFLICT (id) DO NOTHING;
-            """)
+
 
             cur.close()
         except psycopg2.Error as e:

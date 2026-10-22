@@ -35,6 +35,24 @@ def handle_account_register(handler, raw_body, ip):
         handler._send_json(400, {"ok": False, "error": "잘못된 요청 본문"})
         return
 
+    # Check ALLOW_PUBLIC_REGISTER policy: unless enabled, public signups are rejected
+    from config import load_config
+    cfg = load_config()
+    allow_pub = cfg.get("allow_public_register", False)
+    if os.environ.get("ALLOW_PUBLIC_REGISTER"):
+        allow_pub = os.environ.get("ALLOW_PUBLIC_REGISTER", "").strip().lower() in ("1", "true", "yes", "on")
+
+    if not allow_pub:
+        # Check if caller has active admin session creating a user on behalf of team
+        caller_session = handler._get_session_optional() if hasattr(handler, "_get_session_optional") else getattr(handler, "session", None)
+        from services.auth import is_admin_user
+        if not caller_session or not is_admin_user(caller_session):
+            handler._send_json(403, {
+                "ok": False,
+                "error": "시스템 보안 정책에 의해 공개 회원가입(Public Register)이 비활성화되어 있습니다. 관리자에게 계정 생성을 요청하세요."
+            })
+            return
+
     from services.license_manager import check_seat_available
     avail, seat_err = check_seat_available()
     if not avail:
@@ -66,13 +84,10 @@ def handle_account_register(handler, raw_body, ip):
         else:
             org = "dev"
 
-    is_first_user = False
     with _save_lock:
-        cnt_row = get_one("SELECT COUNT(*) as cnt FROM users")
-        is_first_user = ((cnt_row["cnt"] if cnt_row else 0) == 0)
-
         salt_hex, hash_hex = hash_password(password)
         try:
+            # All regular registrations enter pending state; admin creation is exclusively reserved for Setup Wizard
             new_user = create_user(
                 name=name,
                 username=username,
@@ -80,10 +95,10 @@ def handle_account_register(handler, raw_body, ip):
                 email=email,
                 salt=salt_hex,
                 hash_pwd=hash_hex,
-                role="admin" if is_first_user else "member",
-                is_admin=is_first_user,
-                status="active" if is_first_user else "pending",
-                disabled=0 if is_first_user else 1
+                role="member",
+                is_admin=False,
+                status="pending",
+                disabled=1
             )
         except ValueError as val_err:
             handler._send_json(409, {"ok": False, "exists": True, "error": str(val_err)})
@@ -96,25 +111,7 @@ def handle_account_register(handler, raw_body, ip):
             handler._send_json(500, {"ok": False, "error": f"계정 등록 실패: {e}"})
             return
 
-    if is_first_user:
-        token = create_session(name, org, email, user_id=new_user["id"] if new_user else None)
-        access_log(ip, "account_register", 200, "%s|%s (Initial Admin)" % (name, org))
-        cookie_hdr = handler._make_auth_cookie_header(token)
-        handler._send_json(200, {
-            "ok": True,
-            "token": token,
-            "user": {
-                "name": name,
-                "username": username,
-                "org": org,
-                "department": org,
-                "email": email,
-                "isAdmin": True,
-                "role": "admin"
-            }
-        }, extra_headers=[cookie_hdr])
-    else:
-        # Trigger Admin notification + Webhook
+    # Trigger Admin notification + Webhook
         access_log(ip, "account_register_request", 200, "%s|%s (Pending Approval)" % (name, org))
         from services.audit_logger import log_audit
         log_audit(

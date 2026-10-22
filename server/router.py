@@ -1107,8 +1107,16 @@ def handle_get_local_attachment(handler, parsed, ip):
         handler._send_json(403, {"ok": False, "error": "해당 업무 카드의 첨부파일을 열람할 권한이 없습니다."})
         return
     
-    file_path = os.path.normpath(os.path.join(ATTACH_DIR, str(record_id), filename))
-    if not file_path.startswith(os.path.normpath(ATTACH_DIR)) or not os.path.isfile(file_path):
+    rec_attach_dir = os.path.realpath(os.path.join(ATTACH_DIR, str(record_id)))
+    file_path = os.path.realpath(os.path.join(rec_attach_dir, filename))
+
+    # Strict Directory Traversal Defense: Ensure file resides strictly inside record's attachment directory
+    try:
+        is_safe = (os.path.commonpath([file_path, rec_attach_dir]) == rec_attach_dir)
+    except Exception:
+        is_safe = False
+
+    if not is_safe or not os.path.isfile(file_path):
         handler._send_json(404, {"ok": False, "error": "첨부파일을 찾을 수 없습니다."})
         return
 

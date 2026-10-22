@@ -674,8 +674,16 @@ def _tool_update_issue_status(args, current_user, cfg):
         
     author_name = current_user.get("name") or "사용자"
     log_line(f"[Chat Tool] 상태 변경 실행: {issue_key} → {new_status} (by {author_name})")
-    
+
+    from services.license_manager import is_system_read_only
+    if is_system_read_only():
+        return {"success": False, "error": "라이선스가 만료되어 시스템이 읽기 전용 상태입니다. 업무 상태를 변경할 수 없습니다."}
+
+    from services.auth import can_modify_record
     local_rec = find_record_by_key_or_code(issue_key)
+    if local_rec and not can_modify_record(current_user, local_rec):
+        return {"success": False, "error": "해당 업무 카드의 상태를 변경할 권한이 없습니다 (조회 전용 역할이거나 타 부서 권한 부족)."}
+    
     jira_ok = False
     jira_note = ""
     jira_key = None
@@ -779,7 +787,15 @@ def _tool_add_issue_comment(args, current_user, cfg):
     author_name = current_user.get("name") or "사용자"
     log_line(f"[Chat Tool] 댓글 추가 실행: {issue_key} (작성자: {author_name})")
 
+    from services.license_manager import is_system_read_only
+    if is_system_read_only():
+        return {"success": False, "error": "라이선스가 만료되어 시스템이 읽기 전용 상태입니다. 댓글을 작성할 수 없습니다."}
+
+    from services.auth import can_modify_record
     local_rec = find_record_by_key_or_code(issue_key)
+    if local_rec and not can_modify_record(current_user, local_rec):
+        return {"success": False, "error": "해당 업무 카드에 댓글을 작성할 권한이 없습니다."}
+    
     jira_enabled = bool(cfg.get("jira", {}).get("enabled", False))
     
     if local_rec and local_rec.get("id"):
@@ -876,6 +892,14 @@ def _tool_create_issue(args, current_user, cfg):
     from services.activity_store import append_activity
     from services.vector_store import trigger_async_vector_sync
     from db import query
+
+    from services.license_manager import is_system_read_only
+    if is_system_read_only():
+        return {"success": False, "error": "라이선스가 만료되어 시스템이 읽기 전용 상태입니다. 신규 업무를 생성할 수 없습니다."}
+
+    from services.auth import get_user_role
+    if get_user_role(current_user) == "viewer":
+        return {"success": False, "error": "조회 전용(Viewer) 권한으로는 신규 업무를 생성할 수 없습니다."}
 
     summary = (args.get("summary") or "").strip()
     if not summary:
