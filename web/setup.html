@@ -82,6 +82,14 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .brand-wrap:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
     }
 
     .brand-logo-badge {
@@ -435,7 +443,7 @@
       
       <!-- Top Header -->
       <div class="setup-header">
-        <div class="brand-wrap">
+        <a href="/" class="brand-wrap" title="메인 페이지로 이동 / Go to Home">
           <div class="brand-logo-badge">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--argos-cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
@@ -447,7 +455,7 @@
             <div class="brand-title">ARGOS <span>WORKS</span></div>
             <div class="brand-sub" id="txt-brand-sub">Enterprise B2B 초기 온보딩 마법사</div>
           </div>
-        </div>
+        </a>
 
         <button type="button" id="btn-lang-toggle" class="lang-toggle-btn">
           <span>🌐</span> <span id="txt-lang-btn">KO</span>
