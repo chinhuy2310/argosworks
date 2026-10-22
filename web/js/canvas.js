@@ -1766,6 +1766,17 @@
         return;
       }
 
+      if(startDate && dueDate && dueDate < startDate){
+        if(errEl){
+          errEl.hidden = false;
+          var isEnLang = (window.i18n && typeof window.i18n.getLang === "function") 
+            ? (window.i18n.getLang() === "en") 
+            : (localStorage.getItem("argos_lang") === "en" || localStorage.getItem("jarvisLang") === "en");
+          errEl.textContent = isEnLang ? "Due date cannot be earlier than start date." : "마감일은 시작일보다 빠를 수 없습니다.";
+        }
+        return;
+      }
+
       if(submitBtn){
         submitBtn.disabled = true;
         submitBtn.textContent = "저장 중...";
@@ -1792,7 +1803,9 @@
           if(errEl){
             errEl.hidden = false;
             if(res && res.conflict){
-              var isEn = (localStorage.getItem("argos_lang") === "en");
+              var isEn = (window.i18n && typeof window.i18n.getLang === "function") 
+                ? (window.i18n.getLang() === "en") 
+                : (localStorage.getItem("argos_lang") === "en" || localStorage.getItem("jarvisLang") === "en");
               var conflictHtml = isEn
                 ? '<div style="background:#fef2f2; border:1px solid #f87171; color:#991b1b; padding:10px 12px; border-radius:6px; font-size:12.5px; line-height:1.45;">' +
                   '<strong>⚠️ Conflict Detected (Optimistic Lock)</strong><br>' +

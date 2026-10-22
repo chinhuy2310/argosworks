@@ -20,9 +20,13 @@ mkdir -p data/backups data/attachments data/templates
 
 # Ensure config.json exists
 if [ ! -f server/config.json ]; then
-    echo "⚠️ Warning: server/config.json not found. Initializing with default config..."
+    echo "⚠️ Warning: server/config.json not found. Initializing from config.example.json..."
     mkdir -p server
-    echo '{"server":{"host":"0.0.0.0","port":8080}}' > server/config.json
+    if [ -f server/config.example.json ]; then
+        cp server/config.example.json server/config.json
+    else
+        echo '{"server":{"host":"0.0.0.0","port":8080}}' > server/config.json
+    fi
 fi
 
 echo "🚀 Building and starting ARGOS WORKS container via Docker Compose..."

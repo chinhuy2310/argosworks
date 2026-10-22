@@ -73,10 +73,44 @@ var pimCategories = ["일반"];
 var pimSpecTemplates = { "일반": [] };
 
 function escapeHtml(s){
-  return String(s).replace(/[&<>"]/g, function(c){
-    return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c];
+  if(s === null || s === undefined) return "";
+  return String(s).replace(/[&<>"']/g, function(c){
+    return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];
   });
 }
+
+function trapFocus(modalEl) {
+  if (!modalEl) return function(){};
+  var focusableSelectors = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  function handleKeyDown(e) {
+    if (e.key !== "Tab" || modalEl.hidden) return;
+    var focusable = Array.from(modalEl.querySelectorAll(focusableSelectors)).filter(function(el) {
+      return el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement;
+    });
+    if (focusable.length === 0) return;
+    var firstEl = focusable[0];
+    var lastEl = focusable[focusable.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === firstEl) {
+        lastEl.focus();
+        e.preventDefault();
+      }
+    } else {
+      if (document.activeElement === lastEl) {
+        firstEl.focus();
+        e.preventDefault();
+      }
+    }
+  }
+
+  document.addEventListener("keydown", handleKeyDown);
+  return function releaseFocusTrap() {
+    document.removeEventListener("keydown", handleKeyDown);
+  };
+}
+window.trapFocus = trapFocus;
 
 function colorVar(colorIndex){ return "var(--dept-color-" + (((colorIndex - 1) % 6) + 1) + ")"; }
 

@@ -955,7 +955,7 @@ function initReportTemplateEngine() {
     btnDownloadSample.addEventListener("click", function(){
       var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
       var token = (authH["Authorization"] || "").replace(/^Bearer\s+/i, "");
-      window.open("/api/reports/template/sample?token=" + encodeURIComponent(token), "_blank");
+      window.open("/api/reports/template/sample", "_blank");
     });
   }
 
@@ -1767,7 +1767,7 @@ async function triggerRestoreBackup(filename) {
 function downloadBackupFile(filename) {
   var authH = (typeof getAuthHeaders === "function") ? getAuthHeaders() : {};
   var token = (authH["Authorization"] || "").replace(/^Bearer\s+/i, "");
-  window.open("/api/admin/backups/download?filename=" + encodeURIComponent(filename) + "&token=" + encodeURIComponent(token), "_blank");
+  window.open("/api/admin/backups/download?filename=" + encodeURIComponent(filename), "_blank");
 }
 
 function initBackupUI() {
@@ -2051,14 +2051,14 @@ function renderAdminUsersTable() {
     if (uStatus === "pending") {
       statusBadge = '<span class="badge-status-pending" style="display:inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; background: #fef3c7; color: #b45309; border: 1px solid #fde68a;">🟡 승인 대기</span>';
       actionButtons = 
-        '<button type="button" class="user-action-btn" style="color: #059669; border-color: #a7f3d0; background: #ecfdf5; font-weight: 600;" onclick="approveAdminUser(' + u.id + ', \'' + escapeHtml(u.name) + '\', \'' + escapeHtml(u.role || 'member') + '\')" title="계정 발급 승인">✅ 승인</button>' +
-        '<button type="button" class="user-action-btn" style="color: #dc2626; border-color: #fecaca; background: #fef2f2;" onclick="rejectAdminUser(' + u.id + ', \'' + escapeHtml(u.name) + '\')" title="가입 요청 반려">❌ 반려</button>' +
-        '<button type="button" class="user-action-btn btn-danger" onclick="deleteAdminUser(' + u.id + ', \'' + escapeHtml(u.name) + '\')" title="요청 삭제">🗑️</button>';
+        '<button type="button" class="user-action-btn" style="color: #059669; border-color: #a7f3d0; background: #ecfdf5; font-weight: 600;" onclick="approveAdminUser(' + u.id + ')" title="계정 발급 승인">✅ 승인</button>' +
+        '<button type="button" class="user-action-btn" style="color: #dc2626; border-color: #fecaca; background: #fef2f2;" onclick="rejectAdminUser(' + u.id + ')" title="가입 요청 반려">❌ 반려</button>' +
+        '<button type="button" class="user-action-btn btn-danger" onclick="deleteAdminUser(' + u.id + ')" title="요청 삭제">🗑️</button>';
     } else if (uStatus === "rejected") {
       statusBadge = '<span class="badge-status-rejected" style="display:inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;">❌ 반려됨</span>';
       actionButtons = 
-        '<button type="button" class="user-action-btn" style="color: #059669; border-color: #a7f3d0; background: #ecfdf5; font-weight: 600;" onclick="approveAdminUser(' + u.id + ', \'' + escapeHtml(u.name) + '\', \'' + escapeHtml(u.role || 'member') + '\')" title="재승인">✅ 재승인</button>' +
-        '<button type="button" class="user-action-btn btn-danger" onclick="deleteAdminUser(' + u.id + ', \'' + escapeHtml(u.name) + '\')" title="영구 삭제">🗑️</button>';
+        '<button type="button" class="user-action-btn" style="color: #059669; border-color: #a7f3d0; background: #ecfdf5; font-weight: 600;" onclick="approveAdminUser(' + u.id + ')" title="재승인">✅ 재승인</button>' +
+        '<button type="button" class="user-action-btn btn-danger" onclick="deleteAdminUser(' + u.id + ')" title="영구 삭제">🗑️</button>';
     } else {
       statusBadge = (u.disabled == 1)
         ? '<span class="badge-status-locked">🔴 잠금</span>'
@@ -2070,7 +2070,7 @@ function renderAdminUsersTable() {
       actionButtons = 
         '<button type="button" class="user-action-btn" onclick="openAdminEditUserModal(' + u.id + ')" title="정보 및 권한 수정">✏️ 수정</button>' +
         '<button type="button" class="user-action-btn" onclick="toggleAdminUserStatus(' + u.id + ', ' + (u.disabled || 0) + ')" title="' + toggleBtnTitle + '">' + toggleBtnText + '</button>' +
-        '<button type="button" class="user-action-btn btn-danger" onclick="deleteAdminUser(' + u.id + ', \'' + escapeHtml(u.name) + '\')" title="계정 삭제">🗑️</button>';
+        '<button type="button" class="user-action-btn btn-danger" onclick="deleteAdminUser(' + u.id + ')" title="계정 삭제">🗑️</button>';
     }
 
     return '<tr style="border-bottom: 1px solid var(--line, #e2e8f0);">' +
@@ -2231,8 +2231,19 @@ async function toggleAdminUserStatus(userId, currentDisabled) {
   }
 }
 
+function getAdminUserById(userId) {
+  if (Array.isArray(currentAdminUsers)) {
+    for (var i = 0; i < currentAdminUsers.length; i++) {
+      if (currentAdminUsers[i].id == userId) return currentAdminUsers[i];
+    }
+  }
+  return null;
+}
+
 async function deleteAdminUser(userId, userName) {
-  if (!confirm("⚠️ 주의: '" + userName + "' 사용자를 영구 삭제하시겠습니까?\n삭제된 사용자의 활성 세션도 즉시 파기됩니다.")) return;
+  var u = getAdminUserById(userId);
+  var name = userName || (u && u.name) || ("User #" + userId);
+  if (!confirm("⚠️ 주의: '" + name + "' 사용자를 영구 삭제하시겠습니까?\n삭제된 사용자의 활성 세션도 즉시 파기됩니다.")) return;
 
   try {
     var res = await apiPostJson("/api/admin/users/delete", { id: userId });
@@ -2248,9 +2259,12 @@ async function deleteAdminUser(userId, userName) {
 }
 
 async function approveAdminUser(userId, userName, currentRole) {
+  var u = getAdminUserById(userId);
+  var name = userName || (u && u.name) || ("User #" + userId);
+  var defaultRole = currentRole || (u && u.role) || "member";
   var rolePrompt = prompt(
-    "'" + userName + "' 사용자의 계정 발급을 승인하시겠습니까?\n부여할 역할을 입력하세요 (member, manager, admin, viewer):",
-    currentRole || "member"
+    "'" + name + "' 사용자의 계정 발급을 승인하시겠습니까?\n부여할 역할을 입력하세요 (member, manager, admin, viewer):",
+    defaultRole
   );
   if (rolePrompt === null) return;
   var role = rolePrompt.trim().toLowerCase();
@@ -2273,7 +2287,9 @@ async function approveAdminUser(userId, userName, currentRole) {
 }
 
 async function rejectAdminUser(userId, userName) {
-  if (!confirm("⚠️ '" + userName + "' 사용자의 계정 발급 요청을 반려하시겠습니까?\n반려된 사용자는 로그인이 차단되며 반려 안내가 표시됩니다.")) return;
+  var u = getAdminUserById(userId);
+  var name = userName || (u && u.name) || ("User #" + userId);
+  if (!confirm("⚠️ '" + name + "' 사용자의 계정 발급 요청을 반려하시겠습니까?\n반려된 사용자는 로그인이 차단되며 반려 안내가 표시됩니다.")) return;
 
   try {
     var res = await apiPostJson("/api/admin/users/reject", { id: userId });
@@ -2310,12 +2326,37 @@ function initAdminUserUI() {
   if (addCancel) addCancel.addEventListener("click", closeAdminAddUserModal);
   if (addForm) addForm.addEventListener("submit", submitAdminAddUser);
 
-  var editClose = document.getElementById("adminEditUserModalCloseBtn");
-  var editCancel = document.getElementById("adminEditUserModalCancelBtn");
-  var editForm = document.getElementById("adminEditUserForm");
-  if (editClose) editClose.addEventListener("click", closeAdminEditUserModal);
-  if (editCancel) editCancel.addEventListener("click", closeAdminEditUserModal);
-  if (editForm) editForm.addEventListener("submit", submitAdminEditUser);
+  var addModal = document.getElementById("adminAddUserModalBackdrop");
+  var editModal = document.getElementById("adminEditUserModalBackdrop");
+
+  if (addModal) {
+    addModal.addEventListener("click", function(e) {
+      if (e.target === addModal) closeAdminAddUserModal();
+    });
+  }
+  if (editModal) {
+    editModal.addEventListener("click", function(e) {
+      if (e.target === editModal) closeAdminEditUserModal();
+    });
+  }
+
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+      if (addModal && !addModal.hidden) {
+        closeAdminAddUserModal();
+        return;
+      }
+      if (editModal && !editModal.hidden) {
+        closeAdminEditUserModal();
+        return;
+      }
+      var catModal = document.getElementById("modalProductCategory");
+      if (catModal && !catModal.hidden) {
+        catModal.hidden = true;
+        return;
+      }
+    }
+  });
 }
 
 if (document.readyState === "loading") {

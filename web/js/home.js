@@ -857,17 +857,12 @@ window.openProductDetailModal = function(productId){
     });
 };
 
-// 주간 업무 보고서 다운로드 링크: 브라우저 링크 클릭은 Authorization 헤더를 못 보내므로
-// 챗봇/검색 어디에서 렌더링되든 클릭 시점에 ?token= 을 붙여 새 창 없이 다운로드한다.
+// 주간 업무 보고서 다운로드 링크: HttpOnly 쿠키 인증을 기본으로 사용
 document.addEventListener("click", function(e){
   var a = e.target && e.target.closest ? e.target.closest('a[href*="/api/reports/download"]') : null;
   if(!a) return;
   e.preventDefault();
   var href = a.getAttribute("href");
-  var token = (typeof loggedInUser !== "undefined" && loggedInUser && loggedInUser.token) ? loggedInUser.token : "";
-  if(token && href.indexOf("token=") === -1){
-    href += (href.indexOf("?") === -1 ? "?" : "&") + "token=" + encodeURIComponent(token);
-  }
   window.location.href = href;
 }, true);
 

@@ -32,7 +32,7 @@ argoswork/
 │   ├── 📄 handler.py                           # HTTP 요청 처리 기본 핸들러 (SSE 스트리밍, 정적 파일 서빙, 세션 인증)
 │   ├── 📄 router.py                            # URL 라우팅 테이블 (GET/POST 엔드포인트 디스패처)
 │   ├── 📄 config.py                            # 서버 설정 로더 (.env 우선 로드, 기본 설정값, 디렉터리 경로 상수)
-│   ├── 📄 config.json                          # JSON 설정 파일 (Jira URL, AI 공급자/모델 정보 등)
+│   ├── 📄 config.example.json                  # JSON 설정 템플릿 파일 (Jira URL, AI 공급자/모델 정보 등)
 │   ├── 📄 db.py                                # SQLite 데이터베이스 인터페이스 (WAL 모드, 트랜잭션, 커넥션 풀)
 │   ├── 📄 schema.sql                           # SQLite 데이터베이스 스키마 정의 파일
 │   │

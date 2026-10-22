@@ -149,7 +149,17 @@
 
       // Common actions
       "common.close": "닫기",
-      "common.server_error": "서버에 연결할 수 없습니다."
+      "common.server_error": "서버에 연결할 수 없습니다.",
+
+      // Empty states & Canvas
+      "home.ask_empty": "질문 결과를 찾을 수 없습니다. 다른 검색어로 다시 시도해보세요.",
+      "dash.empty_state": "조건에 맞는 기록이 없습니다.",
+      "pim.web_empty": "검색 조건에 맞는 제품이 없습니다.",
+      "pim.empty_state": "등록된 제품이 없습니다.",
+      "canvas.conflict_title": "충돌 감지 (Optimistic Lock)",
+      "canvas.conflict_desc": "이 카드가 방금 다른 사용자에 의해 업데이트되었습니다. 작업 내용을 덮어쓰지 않도록 최신 데이터를 다시 불러와주세요.",
+      "canvas.btn_reload": "최신 데이터 불러오기",
+      "canvas.due_date_invalid": "마감일은 시작일보다 빠를 수 없습니다."
     },
 
     en: {
@@ -293,11 +303,21 @@
 
       // Common actions
       "common.close": "Close",
-      "common.server_error": "Cannot connect to server."
+      "common.server_error": "Cannot connect to server.",
+
+      // Empty states & Canvas
+      "home.ask_empty": "No results found. Please try another search term.",
+      "dash.empty_state": "No matching records found.",
+      "pim.web_empty": "No matching products found.",
+      "pim.empty_state": "No products registered yet.",
+      "canvas.conflict_title": "Conflict Detected (Optimistic Lock)",
+      "canvas.conflict_desc": "This card was just updated by another user. To prevent accidental overwriting, please reload the latest data.",
+      "canvas.btn_reload": "Reload Latest Data",
+      "canvas.due_date_invalid": "Due date cannot be earlier than start date."
     }
   };
 
-  var currentLang = localStorage.getItem("jarvisLang") || "ko";
+  var currentLang = localStorage.getItem("argos_lang") || localStorage.getItem("jarvisLang") || "ko";
   if (!TRANSLATIONS[currentLang]) {
     currentLang = "ko";
   }
@@ -323,7 +343,10 @@
       return;
     }
     currentLang = lang;
-    localStorage.setItem("jarvisLang", lang);
+    try {
+      localStorage.setItem("argos_lang", lang);
+      localStorage.setItem("jarvisLang", lang);
+    } catch(e){}
     applyI18n();
     window.dispatchEvent(new CustomEvent("langchange", { detail: { lang: lang } }));
   }

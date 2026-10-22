@@ -127,84 +127,12 @@ if ENGINE == "sqlite":
             conn.execute("PRAGMA foreign_keys = ON;")
             conn.execute("PRAGMA busy_timeout = 5000;")
 
-            # Check and migrate columns on existing tables
-            cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            existing_tables = {row[0] for row in cur.fetchall()}
-
-            if "records" in existing_tables:
-                r_cols = {row[1] for row in conn.execute("PRAGMA table_info(records)").fetchall()}
-                if "status" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN status TEXT NOT NULL DEFAULT '진행';")
-                if "card_code" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN card_code TEXT NOT NULL DEFAULT '';")
-                if "start_date" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN start_date TEXT NOT NULL DEFAULT '';")
-                if "due_date" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN due_date TEXT NOT NULL DEFAULT '';")
-                if "is_scheduled" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN is_scheduled INTEGER NOT NULL DEFAULT 1;")
-                if "version" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN version INTEGER NOT NULL DEFAULT 1;")
-                if "updated_at" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN updated_at TEXT NOT NULL DEFAULT '';")
-                    conn.execute("UPDATE records SET updated_at = created_at WHERE updated_at = '' OR updated_at IS NULL;")
-
-                # Backfill work_date → start_date / due_date
-                rows = conn.execute("SELECT id, work_date, start_date, due_date FROM records").fetchall()
-                for row in rows:
-                    rec_id = row[0]
-                    w_date = (row[1] or "").strip()
-                    s_date = (row[2] or "").strip()
-                    d_date = (row[3] or "").strip()
-                    if (not s_date or not d_date) and w_date:
-                        if "~" in w_date:
-                            parts = [p.strip() for p in w_date.split("~")]
-                            s_val = parts[0]
-                            d_val = parts[1] if len(parts) > 1 and parts[1] else s_val
-                        else:
-                            s_val = w_date
-                            d_val = w_date
-                        conn.execute("UPDATE records SET start_date = ?, due_date = ? WHERE id = ?", (s_val, d_val, rec_id))
-
-            if "departments" in existing_tables:
-                d_cols = {row[1] for row in conn.execute("PRAGMA table_info(departments)").fetchall()}
-                if "local_prefix" not in d_cols:
-                    conn.execute("ALTER TABLE departments ADD COLUMN local_prefix TEXT NOT NULL DEFAULT '';")
-                if "jira_key" not in d_cols:
-                    conn.execute("ALTER TABLE departments ADD COLUMN jira_key TEXT NOT NULL DEFAULT '';")
-
-            if "products" in existing_tables:
-                p_cols = {row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()}
-                if "source" not in p_cols:
-                    conn.execute("ALTER TABLE products ADD COLUMN source TEXT NOT NULL DEFAULT 'internal';")
-                if "price" not in p_cols:
-                    conn.execute("ALTER TABLE products ADD COLUMN price INTEGER DEFAULT 0;")
-                if "currency" not in p_cols:
-                    conn.execute("ALTER TABLE products ADD COLUMN currency TEXT NOT NULL DEFAULT 'KRW';")
-
-                r_cols = {row[1] for row in conn.execute("PRAGMA table_info(records)").fetchall()} if "records" in existing_tables else set()
-                if "records" in existing_tables and "is_private" not in r_cols:
-                    conn.execute("ALTER TABLE records ADD COLUMN is_private INTEGER NOT NULL DEFAULT 0;")
-
-            if "users" in existing_tables:
-                u_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
-                if "username" not in u_cols:
-                    conn.execute("ALTER TABLE users ADD COLUMN username TEXT NOT NULL DEFAULT '';")
-                if "role" not in u_cols:
-                    conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member';")
-                    conn.execute("UPDATE users SET role = 'admin' WHERE is_admin = 1;")
-                if "disabled" not in u_cols:
-                    conn.execute("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0;")
-                if "status" not in u_cols:
-                    conn.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active';")
-                if "avatar_url" not in u_cols:
-                    conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT NOT NULL DEFAULT '';")
-
+            # 1. Apply Canonical Schema FIRST (ensures all tables & canonical columns exist on clean installs)
             if os.path.exists(schema_path):
                 with open(schema_path, 'r', encoding='utf-8') as f:
                     schema_script = f.read()
                 conn.executescript(schema_script)
-                logger.info("Schema applied successfully.")
+                logger.info("Canonical schema applied successfully.")
 
                 conn.execute("""
                     INSERT OR IGNORE INTO license_info (id, customer_name, license_key, max_seats, expiry_date, modules_json, is_active)
@@ -213,18 +141,112 @@ if ENGINE == "sqlite":
 
                 conn.execute("""
                     INSERT OR IGNORE INTO schema_migrations (version, name)
-                    VALUES (1, 'v2.0_baseline_enterprise_security');
-                """)
-
-                # Migration v2: Unique indexes on users (username, email) to prevent race conditions
-                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users(username) WHERE username != '';")
-                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email != '';")
-                conn.execute("""
-                    INSERT OR IGNORE INTO schema_migrations (version, name)
-                    VALUES (2, 'v2.1_users_unique_constraints');
+                    VALUES (1, 'v2.0_baseline_canonical_schema');
                 """)
             else:
                 logger.warning(f"Schema file not found at {schema_path}")
+
+            # 2. Versioned Migrations Check & Upgrades (for existing legacy databases)
+            applied_migrations = {row[0] for row in conn.execute("SELECT version FROM schema_migrations").fetchall()}
+
+            # Migration v2: Unique indexes on users (username, email) and session foreign key index
+            if 2 not in applied_migrations:
+                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users(username) WHERE username != '';")
+                conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email != '';")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);")
+                conn.execute("INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (2, 'v2.1_users_unique_constraints');")
+                logger.info("[db] Migration v2 (unique constraints & indexes) applied.")
+
+            # Migration v3: Legacy column backfill & schema alignment
+            if 3 not in applied_migrations:
+                # Check tables and alter legacy columns if missing
+                cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                existing_tables = {row[0] for row in cur.fetchall()}
+
+                if "records" in existing_tables:
+                    r_cols = {row[1] for row in conn.execute("PRAGMA table_info(records)").fetchall()}
+                    for col_name, col_def in [
+                        ("status", "TEXT NOT NULL DEFAULT '진행'"),
+                        ("card_code", "TEXT NOT NULL DEFAULT ''"),
+                        ("start_date", "TEXT NOT NULL DEFAULT ''"),
+                        ("due_date", "TEXT NOT NULL DEFAULT ''"),
+                        ("is_scheduled", "INTEGER NOT NULL DEFAULT 1"),
+                        ("is_private", "INTEGER NOT NULL DEFAULT 0"),
+                        ("version", "INTEGER NOT NULL DEFAULT 1"),
+                        ("updated_at", "TEXT NOT NULL DEFAULT ''")
+                    ]:
+                        if col_name not in r_cols:
+                            conn.execute(f"ALTER TABLE records ADD COLUMN {col_name} {col_def};")
+
+                    conn.execute("UPDATE records SET updated_at = created_at WHERE updated_at = '' OR updated_at IS NULL;")
+
+                    # Backfill work_date -> start_date / due_date
+                    rows = conn.execute("SELECT id, work_date, start_date, due_date FROM records").fetchall()
+                    for row in rows:
+                        rec_id = row[0]
+                        w_date = (row[1] or "").strip()
+                        s_date = (row[2] or "").strip()
+                        d_date = (row[3] or "").strip()
+                        if (not s_date or not d_date) and w_date:
+                            if "~" in w_date:
+                                parts = [p.strip() for p in w_date.split("~")]
+                                s_val = parts[0]
+                                d_val = parts[1] if len(parts) > 1 and parts[1] else s_val
+                            else:
+                                s_val = w_date
+                                d_val = w_date
+                            conn.execute("UPDATE records SET start_date = ?, due_date = ? WHERE id = ?", (s_val, d_val, rec_id))
+
+                if "departments" in existing_tables:
+                    d_cols = {row[1] for row in conn.execute("PRAGMA table_info(departments)").fetchall()}
+                    if "local_prefix" not in d_cols:
+                        conn.execute("ALTER TABLE departments ADD COLUMN local_prefix TEXT NOT NULL DEFAULT '';")
+                    if "jira_key" not in d_cols:
+                        conn.execute("ALTER TABLE departments ADD COLUMN jira_key TEXT NOT NULL DEFAULT '';")
+
+                if "products" in existing_tables:
+                    p_cols = {row[1] for row in conn.execute("PRAGMA table_info(products)").fetchall()}
+                    if "source" not in p_cols:
+                        conn.execute("ALTER TABLE products ADD COLUMN source TEXT NOT NULL DEFAULT 'internal';")
+                    if "price" not in p_cols:
+                        conn.execute("ALTER TABLE products ADD COLUMN price INTEGER DEFAULT 0;")
+                    if "currency" not in p_cols:
+                        conn.execute("ALTER TABLE products ADD COLUMN currency TEXT NOT NULL DEFAULT 'KRW';")
+
+                if "users" in existing_tables:
+                    u_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+                    if "username" not in u_cols:
+                        conn.execute("ALTER TABLE users ADD COLUMN username TEXT NOT NULL DEFAULT '';")
+                    if "role" not in u_cols:
+                        conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member';")
+                        conn.execute("UPDATE users SET role = 'admin' WHERE is_admin = 1;")
+                    if "disabled" not in u_cols:
+                        conn.execute("ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0;")
+                    if "status" not in u_cols:
+                        conn.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active';")
+                    if "hash_algo" not in u_cols:
+                        conn.execute("ALTER TABLE users ADD COLUMN hash_algo TEXT NOT NULL DEFAULT 'pbkdf2_sha256';")
+                    if "iterations" not in u_cols:
+                        conn.execute("ALTER TABLE users ADD COLUMN iterations INTEGER NOT NULL DEFAULT 600000;")
+                    if "avatar_url" not in u_cols:
+                        conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT NOT NULL DEFAULT '';")
+
+                if "sessions" in existing_tables:
+                    s_cols = {row[1] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()}
+                    if "user_id" not in s_cols:
+                        conn.execute("ALTER TABLE sessions ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;")
+                        conn.execute("""
+                            UPDATE sessions
+                            SET user_id = (
+                                SELECT id FROM users
+                                WHERE users.name = sessions.user_name AND users.dept_id = sessions.user_dept_id
+                                LIMIT 1
+                            )
+                            WHERE user_id IS NULL;
+                        """)
+
+                conn.execute("INSERT OR IGNORE INTO schema_migrations (version, name) VALUES (3, 'v2.2_legacy_column_alignment');")
+                logger.info("[db] Migration v3 (legacy alignment) applied.")
         except sqlite3.Error as e:
             logger.error(f"Database initialization failed: {e}")
             raise

@@ -97,7 +97,7 @@ def handle_account_register(handler, raw_body, ip):
             return
 
     if is_first_user:
-        token = create_session(name, org, email)
+        token = create_session(name, org, email, user_id=new_user["id"] if new_user else None)
         access_log(ip, "account_register", 200, "%s|%s (Initial Admin)" % (name, org))
         cookie_hdr = handler._make_auth_cookie_header(token)
         handler._send_json(200, {
@@ -162,7 +162,7 @@ def handle_account_login(handler, raw_body, ip):
         return
 
     acc = get_user_by_login(login_id, org)
-    if not acc or not verify_password(password, acc.get("salt", ""), acc.get("password_hash", "")):
+    if not acc or not verify_password(password, acc.get("salt", ""), acc.get("password_hash", ""), user_id=acc.get("id")):
         record_login_failure(ip, login_id)
         access_log(ip, "account_login", 401, "%s|%s" % (login_id, org))
         from services.audit_logger import log_audit
@@ -221,7 +221,7 @@ def handle_account_login(handler, raw_body, ip):
     org = acc.get("dept_id") or acc.get("org", "dev")
     email = acc.get("email", "")
     avatar_url = acc.get("avatar_url", "")
-    token = create_session(name, org, email)
+    token = create_session(name, org, email, user_id=acc.get("id"))
     access_log(ip, "account_login", 200, "%s|%s" % (name, org))
     is_adm = is_admin_user(name, email)
     from services.auth import get_user_role

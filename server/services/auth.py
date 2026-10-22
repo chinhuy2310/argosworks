@@ -4,6 +4,7 @@
 """
 import hashlib
 import hmac
+import re
 import secrets
 import threading
 import os
@@ -11,6 +12,7 @@ import time
 
 from db import query, get_one, execute, transaction
 
+PBKDF2_ROUNDS = 600000
 SERVER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = os.path.dirname(SERVER_DIR)
 
@@ -86,29 +88,23 @@ def get_user_by_login(login_id, org=None):
     if row:
         return row
 
-    # 3. 소속 부서 + 이름 매칭
+    # 3. 소속 부서 + 이름 매칭 (동명이인 방지를 위해 부서가 지정된 경우만 허용)
     if org:
         row = get_one(
             """SELECT id, name, username, dept_id, email, salt, password_hash, is_admin, role, disabled, status, created_at
                FROM users
-               WHERE name = ? AND dept_id = ?
+               WHERE LOWER(name) = ? AND LOWER(dept_id) = ?
                LIMIT 1""",
-            (login_id, org)
+            (login_lower, str(org).strip().lower())
         )
         if row:
             return row
 
-    # 4. 사원명 단독 매칭 (대소문자 무시)
-    return get_one(
-        """SELECT id, name, username, dept_id, email, salt, password_hash, is_admin, role, disabled, status, created_at
-           FROM users
-           WHERE LOWER(name) = ?
-           LIMIT 1""",
-        (login_lower,)
-    )
+    # 부서 지정 없는 사원명 단독 매칭은 타 부서 동명이인의 계정 탈취 및 권한 상승을 방지하기 위해 불허
+    return None
 
 
-def create_user(name, username, org, email, salt, hash_pwd, role="member", is_admin=False, status="active", disabled=0):
+def create_user(name, username, org, email, salt, hash_pwd, role="member", is_admin=False, status="active", disabled=0, hash_algo="pbkdf2_sha256", iterations=PBKDF2_ROUNDS):
     """
     단일 사용자를 원자적(Atomic)으로 생성한다.
     동시성 요청 시 Race Condition 및 중복 username/email을 DB 제약조건과 함께 안전하게 방어한다.
@@ -152,9 +148,9 @@ def create_user(name, username, org, email, salt, hash_pwd, role="member", is_ad
                     (org, org)
                 )
         cur.execute(
-            """INSERT INTO users(name, username, dept_id, email, salt, password_hash, is_admin, role, disabled, status, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (name, username, org, email, salt, hash_pwd, 1 if is_admin else 0, role, disabled, status, now_iso)
+            """INSERT INTO users(name, username, dept_id, email, salt, password_hash, is_admin, role, disabled, status, created_at, hash_algo, iterations)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (name, username, org, email, salt, hash_pwd, 1 if is_admin else 0, role, disabled, status, now_iso, hash_algo, iterations)
         )
 
     transaction(_insert)
@@ -241,60 +237,96 @@ def write_accounts(accounts):
     transaction(_do)
 
 
-def hash_password(password, salt_hex=None):
-    """PBKDF2 비밀번호 해싱."""
+def hash_password(password, salt_hex=None, iterations=PBKDF2_ROUNDS):
+    """PBKDF2 비밀번호 해싱 (기본 600,000회 반복)."""
     salt = os.urandom(16) if salt_hex is None else bytes.fromhex(salt_hex)
-    digest = hashlib.pbkdf2_hmac("sha256", (password or "").encode("utf-8"), salt, 100000)
+    digest = hashlib.pbkdf2_hmac("sha256", (password or "").encode("utf-8"), salt, iterations)
     return salt.hex(), digest.hex()
 
 
-def verify_password(password, salt_hex, hash_hex):
-    """비밀번호 검증."""
+def verify_password(password, salt_hex, hash_hex, iterations=None, user_id=None):
+    """
+    비밀번호 검증 및 자동 점진적 보안 업그레이드(Auto-upgrade hash to 600k iterations).
+    """
     if not salt_hex or not hash_hex:
         return False
-    try:
-        _, digest_hex = hash_password(password, salt_hex)
-    except Exception:
-        return False
-    return hmac.compare_digest(digest_hex, hash_hex)
 
-
-def is_admin_user(user_or_session, email=None):
-    """사용자가 Admin 권한(DB role/is_admin)을 가지고 있는지 판정한다."""
-    if isinstance(user_or_session, dict):
-        if user_or_session.get("isAdmin") or user_or_session.get("is_admin") or user_or_session.get("role") == "admin":
-            return True
-        name = user_or_session.get("username") or user_or_session.get("name", "")
-        email = user_or_session.get("email", "") or email or ""
-    else:
-        name = str(user_or_session or "")
-        email = str(email or "")
-
-    name_clean = (name or "").strip()
-    email_clean = (email or "").strip()
-
-    # 1. DB의 users 테이블에서 is_admin / role 확인 (표준 DB 권한 관리)
-    if name_clean or email_clean:
+    # Always try both PBKDF2_ROUNDS (600k) and legacy 100k, favoring recorded iterations if known
+    candidate_iters = [PBKDF2_ROUNDS, 100000]
+    if iterations:
+        if iterations not in candidate_iters:
+            candidate_iters.insert(0, iterations)
+    elif user_id:
         try:
-            if name_clean and email_clean:
-                row = get_one("SELECT is_admin, role FROM users WHERE username = ? OR name = ? OR email = ? ORDER BY is_admin DESC LIMIT 1", (name_clean, name_clean, email_clean))
-            elif name_clean:
-                row = get_one("SELECT is_admin, role FROM users WHERE username = ? OR name = ? ORDER BY is_admin DESC LIMIT 1", (name_clean, name_clean))
-            else:
-                row = get_one("SELECT is_admin, role FROM users WHERE email = ? ORDER BY is_admin DESC LIMIT 1", (email_clean,))
-            if row and (row.get("is_admin") or row.get("role") == "admin"):
-                return True
+            row = get_one("SELECT iterations FROM users WHERE id = ? LIMIT 1", (user_id,))
+            if row and row.get("iterations"):
+                rec_iter = int(row["iterations"])
+                if rec_iter in candidate_iters:
+                    candidate_iters.remove(rec_iter)
+                candidate_iters.insert(0, rec_iter)
         except Exception:
             pass
 
-    # 2. 선택적 환경변수 오버라이드 지원 (배포 환경용)
-    admin_emails = [e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()]
-    admin_users = [u.strip() for u in os.environ.get("ADMIN_USERS", "").split(",") if u.strip()]
+    matched_iter = None
+    for it in candidate_iters:
+        try:
+            _, digest_hex = hash_password(password, salt_hex, iterations=it)
+            if hmac.compare_digest(digest_hex, hash_hex):
+                matched_iter = it
+                break
+        except Exception:
+            continue
 
-    if email_clean and any(email_clean.lower() == adm for adm in admin_emails):
+    if matched_iter is not None:
+        # If user verified with legacy rounds (< 600k), automatically upgrade hash in DB
+        if matched_iter < PBKDF2_ROUNDS and user_id:
+            try:
+                new_salt, new_hash = hash_password(password, iterations=PBKDF2_ROUNDS)
+                execute(
+                    "UPDATE users SET salt = ?, password_hash = ?, hash_algo = 'pbkdf2_sha256', iterations = ? WHERE id = ?",
+                    (new_salt, new_hash, PBKDF2_ROUNDS, user_id)
+                )
+            except Exception:
+                pass
         return True
-    if name_clean and any(adm == name_clean for adm in admin_users):
-        return True
+
+    return False
+
+
+def is_admin_user(user_or_session, email=None):
+    """
+    사용자가 Admin 권한(users.role == 'admin')을 가지고 있는지 ID/고유계정 기준으로 엄격하게 판정한다.
+    동명이인 혼동 및 OR 쿼리로 인한 권한 상승 취약점을 완전히 제거하고 users.id / username을 기준으로 검증한다.
+    """
+    if not user_or_session:
+        return False
+
+    # 1. Dict 형태 세션 또는 사용자 객체
+    if isinstance(user_or_session, dict):
+        u_id = user_or_session.get("id") or user_or_session.get("user_id")
+        if u_id:
+            row = get_one("SELECT role, is_admin FROM users WHERE id = ? LIMIT 1", (u_id,))
+            return bool(row and (row.get("role") == "admin" or row.get("is_admin") == 1))
+        username = user_or_session.get("username")
+        if username:
+            row = get_one("SELECT role, is_admin FROM users WHERE username != '' AND LOWER(username) = LOWER(?) LIMIT 1", (username,))
+            return bool(row and (row.get("role") == "admin" or row.get("is_admin") == 1))
+        # ID나 Username이 없는 레거시 세션인 경우 세션 내 명시적 admin role 검증
+        if user_or_session.get("role") == "admin":
+            return True
+        return False
+
+    # 2. Integer user_id 또는 Numeric ID string
+    if isinstance(user_or_session, int) or (isinstance(user_or_session, str) and user_or_session.isdigit()):
+        row = get_one("SELECT role, is_admin FROM users WHERE id = ? LIMIT 1", (int(user_or_session),))
+        return bool(row and (row.get("role") == "admin" or row.get("is_admin") == 1))
+
+    # 3. String username
+    if isinstance(user_or_session, str):
+        login_str = user_or_session.strip()
+        if login_str:
+            row = get_one("SELECT role, is_admin FROM users WHERE username != '' AND LOWER(username) = LOWER(?) LIMIT 1", (login_str,))
+            return bool(row and (row.get("role") == "admin" or row.get("is_admin") == 1))
 
     return False
 
@@ -303,21 +335,19 @@ def get_user_role(user_or_session):
     """사용자의 시스템 권한 등급을 반환한다 ('admin', 'manager', 'member', 'viewer')."""
     if not user_or_session:
         return "viewer"
-    if is_admin_user(user_or_session):
-        return "admin"
     if isinstance(user_or_session, dict):
+        u_id = user_or_session.get("id") or user_or_session.get("user_id")
+        if u_id:
+            row = get_one("SELECT role, is_admin FROM users WHERE id = ? LIMIT 1", (u_id,))
+            if row:
+                if row.get("role") == "admin" or row.get("is_admin") == 1:
+                    return "admin"
+                return row.get("role") or "member"
         role = user_or_session.get("role")
         if role in ("admin", "manager", "member", "viewer"):
             return role
-        # Query DB
-        name = user_or_session.get("name")
-        dept = user_or_session.get("org") or user_or_session.get("dept_id")
-        if name:
-            row = get_one("SELECT role, is_admin FROM users WHERE name = ? AND dept_id = ? LIMIT 1", (name, dept))
-            if row:
-                if row.get("is_admin"):
-                    return "admin"
-                return row.get("role") or "member"
+    if is_admin_user(user_or_session):
+        return "admin"
     return "member"
 
 
@@ -336,6 +366,7 @@ def can_view_record(user_or_session, record):
     - is_private == 1 (비공개/급여/인사): 작성자, 담당자, 부서장(manager), admin만 열람 가능 (타 부서는 차단)
     - manager: 자기 부서 전체 + 타 부서의 일반 공개 레코드 열람 가능
     - member / viewer: 자기 부서 레코드 또는 본인이 담당자/참여자로 지정된 레코드 열람 가능
+    (보안 강화: 부분 문자열 매칭 취약점을 제거하고 정확한 식별자 매칭 사용)
     """
     if not user_or_session:
         return False
@@ -343,16 +374,38 @@ def can_view_record(user_or_session, record):
     if role == "admin":
         return True
 
+    u_id = user_or_session.get("id") or user_or_session.get("user_id")
     u_name = user_or_session.get("name", "").strip().lower()
+    u_username = user_or_session.get("username", "").strip().lower()
+    u_email = user_or_session.get("email", "").strip().lower()
     u_dept = (user_or_session.get("org") or user_or_session.get("dept_id") or "").strip().lower()
 
     rec_dept = (record.get("dept_id") or record.get("org") or "").strip().lower()
+    rec_assignee_id = record.get("assignee_id")
     rec_assignee = (record.get("assignee_name") or record.get("assignee") or "").strip().lower()
-    rec_participants = (record.get("participants") or "").strip().lower()
-    is_private = bool(record.get("is_private"))
+    rec_assignee_email = (record.get("assignee_email") or "").strip().lower()
+    
+    # 참여자 목록 분리 (쉼표, 세미콜론, 줄바꿈)
+    raw_participants = record.get("participants") or ""
+    parts = [p.strip().lower() for p in re.split(r"[,;/\n]+", str(raw_participants)) if p.strip()]
 
-    is_involved = (u_name and (u_name in rec_assignee or u_name in rec_participants))
-    is_same_dept = (u_dept and u_dept == rec_dept)
+    # 정확한 담당자/참여자 매칭 (부분 문자열 매칭 취약점 완전 방어)
+    is_involved = False
+    if u_id and rec_assignee_id and str(u_id) == str(rec_assignee_id):
+        is_involved = True
+    elif u_name and u_name == rec_assignee:
+        is_involved = True
+    elif u_username and u_username == rec_assignee:
+        is_involved = True
+    elif u_email and rec_assignee_email and u_email == rec_assignee_email:
+        is_involved = True
+    elif u_name and u_name in parts:
+        is_involved = True
+    elif u_username and u_username in parts:
+        is_involved = True
+
+    is_same_dept = bool(u_dept and u_dept == rec_dept)
+    is_private = bool(record.get("is_private"))
 
     # 비공개 레코드 격리
     if is_private:
@@ -375,7 +428,13 @@ def can_view_record(user_or_session, record):
 
 
 def can_modify_record(user_or_session, record):
-    """레코드 수정/삭제 권한 판정 (viewer는 읽기 전용으로 차단)"""
+    """
+    레코드 수정/삭제 권한 판정:
+    - viewer는 읽기 전용 역할로 무조건 차단 (403)
+    - admin은 전체 수정 가능
+    - manager는 자기 부서 레코드 수정 가능
+    - member는 자신이 담당자인 레코드만 수정 가능
+    """
     if not user_or_session:
         return False
     role = get_user_role(user_or_session)
@@ -384,18 +443,41 @@ def can_modify_record(user_or_session, record):
     if role == "viewer":
         return False
 
+    u_id = user_or_session.get("id") or user_or_session.get("user_id")
     u_name = user_or_session.get("name", "").strip().lower()
+    u_username = user_or_session.get("username", "").strip().lower()
     u_dept = (user_or_session.get("org") or user_or_session.get("dept_id") or "").strip().lower()
 
     rec_dept = (record.get("dept_id") or record.get("org") or "").strip().lower()
+    rec_assignee_id = record.get("assignee_id")
     rec_assignee = (record.get("assignee_name") or record.get("assignee") or "").strip().lower()
 
     if role == "manager" and u_dept == rec_dept:
         return True
-    if u_name and u_name in rec_assignee:
+    if u_id and rec_assignee_id and str(u_id) == str(rec_assignee_id):
+        return True
+    if u_name and u_name == rec_assignee:
+        return True
+    if u_username and u_username == rec_assignee:
         return True
 
     return False
+
+
+def visible_records(session, records=None):
+    """
+    단일 권한 진실의 원천 (Single Source of Truth).
+    주어진 세션이 열람 가능한 레코드 목록만 안전하게 필터링하여 반환한다.
+    목록 조회, 검색, 통계, 보고서, 챗봇 도구, RAG 벡터 검색 등 모든 경로에서 공통 사용.
+    """
+    if not session:
+        return []
+    if records is None:
+        from services.data_store import read_records
+        records = read_records()
+    if is_admin_user(session):
+        return list(records)
+    return [r for r in records if can_view_record(session, r)]
 
 
 def can_view_pim_price(user_or_session):
@@ -444,24 +526,47 @@ def get_session_ttl_seconds():
 
 def check_login_rate_limit(ip, identifier):
     """
-    무차별 대입 공격(Brute-force) 방어:
-    동일 IP+사용자 기준 15분 내 5회 이상 로그인 실패 시 임시 잠금 처리.
+    무차별 대입 공격(Brute-force) 방어 (DB 영속화):
+    동일 IP 또는 동일 계정 기준 15분 내 5회 이상 로그인 실패 시 임시 잠금 처리.
     """
     now = time.time()
-    key = f"{ip}:{(identifier or '').strip().lower()}"
-    with _login_failures_lock:
-        attempts = [t for t in _login_failures.get(key, []) if now - t < 900]
-        _login_failures[key] = attempts
-        if len(attempts) >= 5:
-            remaining = int(900 - (now - attempts[0]))
+    cutoff = now - 900
+    ident = (identifier or '').strip().lower()
+    try:
+        # Check by both IP and account identifier
+        row = get_one(
+            "SELECT COUNT(*) as cnt, MIN(failed_at) as earliest FROM login_attempts WHERE (ip = ? OR identifier = ?) AND failed_at > ?",
+            (ip, ident, cutoff)
+        )
+        cnt = row["cnt"] if row else 0
+        if cnt >= 5:
+            earliest = row["earliest"] if row and row.get("earliest") else cutoff
+            remaining = int(900 - (now - earliest))
             mins = max(1, remaining // 60)
             return False, f"보안 경고: 로그인 시도 실패 횟수 초과로 계정이 임시 잠금되었습니다. {mins}분 후 다시 시도하세요."
-        return True, ""
+    except Exception:
+        # Fallback to in-memory if DB fails
+        key = f"{ip}:{ident}"
+        with _login_failures_lock:
+            attempts = [t for t in _login_failures.get(key, []) if now - t < 900]
+            _login_failures[key] = attempts
+            if len(attempts) >= 5:
+                remaining = int(900 - (now - attempts[0]))
+                mins = max(1, remaining // 60)
+                return False, f"보안 경고: 로그인 시도 실패 횟수 초과로 계정이 임시 잠금되었습니다. {mins}분 후 다시 시도하세요."
+    return True, ""
 
 def record_login_failure(ip, identifier):
-    """로그인 실패 시각 기록."""
+    """로그인 실패 시각 기록 (DB 및 메모리 동기화)."""
     now = time.time()
-    key = f"{ip}:{(identifier or '').strip().lower()}"
+    ident = (identifier or '').strip().lower()
+    try:
+        execute("INSERT INTO login_attempts (ip, identifier, failed_at) VALUES (?, ?, ?)", (ip, ident, now))
+        # Cleanup old attempts > 24 hours
+        execute("DELETE FROM login_attempts WHERE failed_at < ?", (now - 86400,))
+    except Exception:
+        pass
+    key = f"{ip}:{ident}"
     with _login_failures_lock:
         attempts = [t for t in _login_failures.get(key, []) if now - t < 900]
         attempts.append(now)
@@ -469,30 +574,69 @@ def record_login_failure(ip, identifier):
 
 def clear_login_failures(ip, identifier):
     """로그인 성공 시 실패 기록 초기화."""
-    key = f"{ip}:{(identifier or '').strip().lower()}"
+    ident = (identifier or '').strip().lower()
+    try:
+        execute("DELETE FROM login_attempts WHERE ip = ? OR identifier = ?", (ip, ident))
+    except Exception:
+        pass
+    key = f"{ip}:{ident}"
     with _login_failures_lock:
         if key in _login_failures:
             del _login_failures[key]
 
-def create_session(name, org, email):
-    """새 로그인 세션을 생성한다."""
+def create_session(name_or_user_id, org=None, email=None, user_id=None):
+    """
+    새 로그인 세션을 생성한다.
+    user_id를 필수 외래키로 저장하여 세션 위조 및 다중 동명이인 권한 혼동을 방지한다.
+    """
+    u_id = user_id
+    name = str(name_or_user_id or "")
+    if isinstance(name_or_user_id, int):
+        u_id = name_or_user_id
+        u_row = get_user_by_id(u_id)
+        if u_row:
+            name = u_row.get("name") or name
+            org = org or u_row.get("dept_id")
+            email = email or u_row.get("email")
+    elif not u_id:
+        u_row = get_user_by_login(name, org)
+        if not u_row and org:
+            u_row = get_one("SELECT id, name, dept_id, email, role, is_admin FROM users WHERE LOWER(name) = ? AND LOWER(dept_id) = ? LIMIT 1", (name.lower(), str(org).lower()))
+        if not u_row and email:
+            u_row = get_one("SELECT id, name, dept_id, email, role, is_admin FROM users WHERE LOWER(email) = ? LIMIT 1", (email.lower(),))
+        if not u_row:
+            u_row = get_one("SELECT id, name, dept_id, email, role, is_admin FROM users WHERE LOWER(username) = ? LIMIT 1", (name.lower(),))
+        if u_row:
+            u_id = u_row["id"]
+            name = u_row.get("name") or name
+            org = org or u_row.get("dept_id")
+            email = email or u_row.get("email")
+
     token = secrets.token_hex(24)
-    is_admin = is_admin_user(name, email)
     ts = time.time()
+    is_admin = is_admin_user(u_id or name)
 
     execute(
-        """INSERT INTO sessions(token, user_name, user_dept_id, user_email, is_admin, created_at)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (token, name, org, email, 1 if is_admin else 0, ts)
+        """INSERT INTO sessions(token, user_id, user_name, user_dept_id, user_email, is_admin, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (token, u_id, name, org or "", email or "", 1 if is_admin else 0, ts)
     )
     return token
 
 def get_session(token):
-    """토큰으로 세션 정보를 반환한다 (TTL 만료 검증 포함)."""
+    """토큰으로 세션 정보를 반환한다 (users 테이블과 실시간 JOIN하여 최신 role 및 계정 비활성화 검증)."""
     if not token:
         return None
+
     row = get_one(
-        "SELECT user_name, user_dept_id, user_email, is_admin, created_at FROM sessions WHERE token = ?",
+        """SELECT s.token, s.user_id, s.user_name, s.user_dept_id, s.user_email, s.created_at,
+                  u.id AS u_id, u.name AS u_name, u.username AS u_username, u.dept_id AS u_dept_id,
+                  u.email AS u_email, u.role AS u_role, u.is_admin AS u_is_admin,
+                  u.disabled AS u_disabled, u.status AS u_status
+           FROM sessions s
+           LEFT JOIN users u ON (s.user_id IS NOT NULL AND s.user_id = u.id)
+                             OR (s.user_id IS NULL AND LOWER(s.user_name) = LOWER(u.name) AND LOWER(s.user_dept_id) = LOWER(u.dept_id))
+           WHERE s.token = ?""",
         (token,)
     )
     if not row:
@@ -510,13 +654,32 @@ def get_session(token):
             pass
         return None
 
-    is_admin = bool(row["is_admin"])
+    # 사용자가 DB에 없거나, 잠금/비활성화(disabled=1)되었거나, 승인 대기/반려 상태(status != 'active')인 경우 즉시 None 반환
+    u_id = row.get("u_id")
+    if not u_id:
+        return None
+    if row.get("u_disabled") or row.get("u_status") != "active":
+        return None
+
+    # 실시간 DB role 적용 (viewer, member, manager, admin)
+    user_role = row.get("u_role") or "member"
+    is_admin = bool(user_role == "admin" or row.get("u_is_admin") == 1)
+    if is_admin:
+        user_role = "admin"
+
     return {
-        "name": row["user_name"],
-        "org": row["user_dept_id"],
-        "email": row["user_email"],
+        "id": u_id,
+        "user_id": u_id,
+        "name": row.get("u_name") or row["user_name"],
+        "username": row.get("u_username") or row["user_name"],
+        "org": row.get("u_dept_id") or row["user_dept_id"],
+        "dept_id": row.get("u_dept_id") or row["user_dept_id"],
+        "email": row.get("u_email") or row["user_email"],
         "isAdmin": is_admin,
-        "role": "admin" if is_admin else "member",
+        "is_admin": is_admin,
+        "role": user_role,
+        "disabled": row.get("u_disabled") or 0,
+        "status": row.get("u_status") or "active",
         "ts": created_at,
     }
 
@@ -528,11 +691,14 @@ def delete_session(token):
         except Exception:
             pass
 
-def delete_all_user_sessions(user_name):
+def delete_all_user_sessions(user_id_or_name):
     """해당 사용자의 모든 기기 세션 강제 만료 (Logout from all devices)."""
-    if user_name:
+    if user_id_or_name is not None and user_id_or_name != "":
         try:
-            execute("DELETE FROM sessions WHERE user_name = ?", (user_name,))
+            if isinstance(user_id_or_name, int) or (isinstance(user_id_or_name, str) and str(user_id_or_name).isdigit()):
+                execute("DELETE FROM sessions WHERE user_id = ?", (int(user_id_or_name),))
+            else:
+                execute("DELETE FROM sessions WHERE user_name = ? OR user_id IN (SELECT id FROM users WHERE username = ?)", (str(user_id_or_name), str(user_id_or_name)))
         except Exception:
             pass
 

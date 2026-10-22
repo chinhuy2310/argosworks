@@ -149,13 +149,14 @@ def handle_post_setup_complete(handler, raw_body, ip):
                 VALUES (?, 0)
             """, (d_id,))
 
-        # (2) Master Admin 계정 생성 (status='active', role='admin', is_admin=1, disabled=0)
+        # (2) Master Admin 계정 생성 (status='active', role='admin', is_admin=1, disabled=0, 600k PBKDF2)
         cur.execute("""
-            INSERT INTO users (username, name, dept_id, email, salt, password_hash, is_admin, role, disabled, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 1, 'admin', 0, 'active', ?)
+            INSERT INTO users (username, name, dept_id, email, salt, password_hash, is_admin, role, disabled, status, created_at, hash_algo, iterations)
+            VALUES (?, ?, ?, ?, ?, ?, 1, 'admin', 0, 'active', ?, 'pbkdf2_sha256', 600000)
         """, (username, name, admin_dept_id, email, salt, pwd_hash, now_str))
 
     transaction(_do_setup)
+    admin_user = get_one("SELECT id, name, dept_id, email, role FROM users WHERE username = ? LIMIT 1", (username,))
 
     # 5. 라이선스 정보 활성화 반영
     act_ok, act_msg = activate_license(license_key)
@@ -194,7 +195,7 @@ def handle_post_setup_complete(handler, raw_body, ip):
     access_log(ip, "system_setup_complete", 200, f"{name}|{username}|{company_name}")
 
     # 8. 자동 세션 발급 및 로그인 처리
-    token = create_session(name, admin_dept_id, email)
+    token = create_session(name, admin_dept_id, email, user_id=admin_user["id"] if admin_user else None)
     cookie_hdr = handler._make_auth_cookie_header(token)
 
     handler._send_json(200, {

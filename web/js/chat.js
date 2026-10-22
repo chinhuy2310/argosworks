@@ -1249,6 +1249,16 @@ function setupChatModelModal() {
 
     if (btnClose) btnClose.onclick = closeChatModelModal;
     if (btnCancel) btnCancel.onclick = closeChatModelModal;
+    if (modal) {
+        modal.onclick = function(e) {
+            if (e.target === modal) closeChatModelModal();
+        };
+    }
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" && modal && !modal.hidden) {
+            closeChatModelModal();
+        }
+    });
 
     if (btnToggleKey && inputKey) {
         btnToggleKey.onclick = function() {

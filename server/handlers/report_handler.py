@@ -63,13 +63,8 @@ def handle_get_report_download(handler, parsed, ip):
     from urllib.parse import parse_qs
     qs = parse_qs(parsed.query)
 
-    # 브라우저 <a href> 클릭은 Authorization 헤더를 보낼 수 없으므로 ?token= 도 허용
-    session = handler._get_session_optional()
+    session = handler._get_session_or_401()
     if not session:
-        q_token = qs.get("token", [""])[0]
-        session = get_session(q_token) if q_token else None
-    if not session:
-        handler._send_json(401, {"ok": False, "error": "로그인이 필요합니다.", "authRequired": True})
         return
 
     filename = qs.get("file", [""])[0]
@@ -196,16 +191,8 @@ def handle_get_export_records_excel(handler, parsed, ip):
     from urllib.parse import parse_qs
     qs = parse_qs(parsed.query)
 
-    session = handler._get_session_optional()
+    session = handler._get_session_or_401()
     if not session:
-        q_token = qs.get("token", [""])[0]
-        if q_token:
-            from services.auth import get_session
-            session = get_session(q_token)
-    if not session:
-        handler.send_response(302)
-        handler.send_header("Location", "/login")
-        handler.end_headers()
         return
 
     import io

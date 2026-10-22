@@ -10,7 +10,8 @@ import tarfile
 import hashlib
 from datetime import datetime
 from config import DATA_DIR, BASE_DIR, CONFIG_PATH, ATTACH_DIR, load_config
-from db import get_db_path, close_connection, init_db
+import subprocess
+from db import get_db_path, close_connection, init_db, ENGINE, DATABASE_URL
 
 logger = logging.getLogger(__name__)
 
@@ -202,38 +203,52 @@ def create_backup(note="수동 백업", backup_type="manual"):
     """
     with _backup_lock:
         bdir = _ensure_backup_dir()
-        src_path = get_db_path()
-        if not os.path.exists(src_path):
-            raise FileNotFoundError(f"데이터베이스 파일이 존재하지 않습니다: {src_path}")
-
         now = datetime.now()
         ts_str = now.strftime("%Y%m%d_%H%M%S")
         base_name = f"argos_backup_{ts_str}_{backup_type}"
-        temp_db_path = os.path.join(bdir, f"{base_name}.tmp.db")
         temp_meta_path = os.path.join(bdir, f"{base_name}.meta.json")
         final_tar_name = f"{base_name}.tar.gz"
         final_tar_path = os.path.join(bdir, final_tar_name)
 
+        is_postgres = (ENGINE == "postgres")
+        if is_postgres:
+            temp_db_path = os.path.join(bdir, f"{base_name}.dump")
+        else:
+            temp_db_path = os.path.join(bdir, f"{base_name}.tmp.db")
+            src_path = get_db_path()
+            if not os.path.exists(src_path):
+                raise FileNotFoundError(f"데이터베이스 파일이 존재하지 않습니다: {src_path}")
+
         try:
-            # 1. SQLite Online Backup API (WAL 모드에서도 일관성 100% 보장)
-            src_conn = sqlite3.connect(src_path)
-            dest_conn = sqlite3.connect(temp_db_path)
-            with dest_conn:
-                src_conn.backup(dest_conn)
-            dest_conn.close()
-            src_conn.close()
+            if is_postgres:
+                # 1. PostgreSQL Enterprise Backup via pg_dump -Fc (Custom compressed format)
+                cmd = ["pg_dump", "-Fc", "-d", DATABASE_URL, "-f", temp_db_path]
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if res.returncode != 0:
+                    raise RuntimeError(f"PostgreSQL pg_dump 백업 실패 (code {res.returncode}): {res.stderr}")
 
-            # 2. 백업 파일 SQLite 무결성 검증 (Integrity Check)
-            check_conn = sqlite3.connect(temp_db_path)
-            cur = check_conn.cursor()
-            cur.execute("PRAGMA integrity_check;")
-            res = cur.fetchone()
-            check_conn.close()
-            if not res or res[0] != "ok":
-                raise RuntimeError(f"백업 데이터 무결성 검사 실패: {res}")
+                raw_db_size = os.path.getsize(temp_db_path)
+                db_sha256 = _compute_sha256(temp_db_path)
+            else:
+                # 1. SQLite Online Backup API (WAL 모드에서도 일관성 100% 보장)
+                src_conn = sqlite3.connect(src_path)
+                dest_conn = sqlite3.connect(temp_db_path)
+                with dest_conn:
+                    src_conn.backup(dest_conn)
+                dest_conn.close()
+                src_conn.close()
 
-            raw_db_size = os.path.getsize(temp_db_path)
-            db_sha256 = _compute_sha256(temp_db_path)
+                # 2. 백업 파일 SQLite 무결성 검증 (Integrity Check)
+                check_conn = sqlite3.connect(temp_db_path)
+                cur = check_conn.cursor()
+                cur.execute("PRAGMA integrity_check;")
+                res = cur.fetchone()
+                check_conn.close()
+                if not res or res[0] != "ok":
+                    raise RuntimeError(f"백업 데이터 무결성 검사 실패: {res}")
+
+                raw_db_size = os.path.getsize(temp_db_path)
+                db_sha256 = _compute_sha256(temp_db_path)
 
             # 3. 내부 메타데이터 JSON 생성
             attach_count = 0
@@ -256,8 +271,9 @@ def create_backup(note="수동 백업", backup_type="manual"):
 
             # 4. Tar.gz 아카이브 생성 (DB + Attachments + Manifest)
             with tarfile.open(final_tar_path, "w:gz", compresslevel=6) as tar:
-                # Add database
-                tar.add(temp_db_path, arcname="argos.db")
+                # Add database (argos.dump for Postgres, argos.db for SQLite)
+                arcname_db = "argos.dump" if is_postgres else "argos.db"
+                tar.add(temp_db_path, arcname=arcname_db)
                 # Add metadata manifest
                 tar.add(temp_meta_path, arcname="backup_manifest.json")
                 # Add attachments directory if exists
@@ -305,6 +321,44 @@ def create_backup(note="수동 백업", backup_type="manual"):
                     except Exception:
                         pass
 
+MAX_BACKUP_EXTRACT_SIZE = 1024 * 1024 * 1024  # 1GB total limit
+MAX_BACKUP_FILE_COUNT = 10000
+
+def _safe_extract_tar(tar, target_dir):
+    """Extract tar archive safely protecting against path traversal, symlinks, and tar bombs."""
+    target_dir_abs = os.path.abspath(target_dir)
+    total_size = 0
+    file_count = 0
+
+    for member in tar.getmembers():
+        file_count += 1
+        if file_count > MAX_BACKUP_FILE_COUNT:
+            raise RuntimeError("백업 아카이브에 포함된 파일 개수가 제한(10,000개)을 초과했습니다.")
+
+        # Check file types: reject symlinks, hardlinks, device nodes
+        if member.issym() or member.islnk() or member.ischr() or member.isblk() or member.isfifo():
+            raise RuntimeError(f"백업 아카이브에 허용되지 않는 특수 파일이 포함되어 있습니다: {member.name}")
+
+        # Check path traversal: reject absolute paths and relative traversals
+        clean_name = os.path.normpath(member.name)
+        if os.path.isabs(clean_name) or clean_name.startswith("..") or "/../" in member.name or "\\..\\" in member.name:
+            raise RuntimeError(f"백업 아카이브에 비정상적인 파일 경로가 포함되어 있습니다: {member.name}")
+
+        dest_path = os.path.abspath(os.path.join(target_dir_abs, clean_name))
+        if not (dest_path == target_dir_abs or dest_path.startswith(target_dir_abs + os.sep)):
+            raise RuntimeError(f"경로 이탈(Path Traversal) 공격이 감지되었습니다: {member.name}")
+
+        total_size += member.size
+        if total_size > MAX_BACKUP_EXTRACT_SIZE:
+            raise RuntimeError("백업 아카이브의 총 압축 해제 용량이 제한(1GB)을 초과했습니다.")
+
+    # Python 3.12+ data filter or member extraction
+    if hasattr(tarfile, 'data_filter'):
+        tar.extractall(target_dir, filter='data')
+    else:
+        for member in tar.getmembers():
+            tar.extract(member, target_dir)
+
 def restore_backup(backup_filename):
     """
     지정한 백업 파일(.tar.gz 또는 .db.gz)로부터 CSDL 및 첨부파일을 1-Click 복원한다.
@@ -320,16 +374,27 @@ def restore_backup(backup_filename):
         if not os.path.exists(archive_path) or not (is_tar or is_gz):
             raise FileNotFoundError(f"유효한 백업 파일을 찾을 수 없습니다: {safe_filename}")
 
+        is_postgres = (ENGINE == "postgres")
         src_db_path = get_db_path()
-        temp_restore_db = os.path.join(bdir, "argos_restore_temp.db")
+        temp_restore_db = os.path.join(bdir, "argos_restore_temp.dump" if is_postgres else "argos_restore_temp.db")
         temp_extract_dir = os.path.join(bdir, f"extract_temp_{int(time.time())}")
 
         # 1. 안전 사전 백업 생성 (Pre-restore Safety Backup)
         safety_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         safety_name = f"argos_safety_before_restore_{safety_ts}"
         safety_path = os.path.join(bdir, f"{safety_name}.tar.gz")
-        if os.path.exists(src_db_path):
-            try:
+        try:
+            if is_postgres:
+                safety_tmp = os.path.join(bdir, f"{safety_name}.dump")
+                res = subprocess.run(["pg_dump", "-Fc", "-d", DATABASE_URL, "-f", safety_tmp], capture_output=True)
+                if res.returncode == 0:
+                    with tarfile.open(safety_path, "w:gz", compresslevel=6) as star:
+                        star.add(safety_tmp, arcname="argos.dump")
+                        if os.path.exists(ATTACH_DIR):
+                            star.add(ATTACH_DIR, arcname="attachments")
+                if os.path.exists(safety_tmp):
+                    os.remove(safety_tmp)
+            elif os.path.exists(src_db_path):
                 safety_tmp_db = os.path.join(bdir, f"{safety_name}.tmp.db")
                 s_conn = sqlite3.connect(src_db_path)
                 d_conn = sqlite3.connect(safety_tmp_db)
@@ -345,8 +410,8 @@ def restore_backup(backup_filename):
 
                 if os.path.exists(safety_tmp_db):
                     os.remove(safety_tmp_db)
-            except Exception as se:
-                logger.warning(f"안전 백업 생성 중 경고: {se}")
+        except Exception as se:
+            logger.warning(f"안전 백업 생성 중 경고: {se}")
 
         try:
             # 2. 압축 해제 및 DB 파일 준비
@@ -354,18 +419,25 @@ def restore_backup(backup_filename):
             if is_tar:
                 os.makedirs(temp_extract_dir, exist_ok=True)
                 with tarfile.open(archive_path, "r:gz") as tar:
-                    tar.extractall(temp_extract_dir)
+                    _safe_extract_tar(tar, temp_extract_dir)
 
-                extracted_db = os.path.join(temp_extract_dir, "argos.db")
-                if not os.path.exists(extracted_db):
-                    # Check other db names
-                    for root, _, files in os.walk(temp_extract_dir):
-                        for f in files:
-                            if f.endswith(".db") or f.endswith(".sqlite"):
-                                extracted_db = os.path.join(root, f)
-                                break
-                if not os.path.exists(extracted_db):
-                    raise RuntimeError("백업 아카이브 내에 유효한 SQLite 데이터베이스가 없습니다.")
+                extracted_db = None
+                # Search for postgres dump or sqlite db
+                for root, _, files in os.walk(temp_extract_dir):
+                    for f in files:
+                        if is_postgres and (f.endswith(".dump") or f == "argos.dump"):
+                            extracted_db = os.path.join(root, f)
+                            break
+                        elif not is_postgres and (f.endswith(".db") or f.endswith(".sqlite")):
+                            extracted_db = os.path.join(root, f)
+                            break
+                    if extracted_db:
+                        break
+
+                if not extracted_db:
+                    db_type_expected = "PostgreSQL dump (.dump)" if is_postgres else "SQLite (.db/.sqlite)"
+                    raise RuntimeError(f"백업 아카이브 내에 유효한 {db_type_expected} 데이터베이스가 없습니다.")
+
                 shutil.copyfile(extracted_db, temp_restore_db)
 
                 extracted_attach = os.path.join(temp_extract_dir, "attachments")
@@ -375,25 +447,33 @@ def restore_backup(backup_filename):
                 with gzip.open(archive_path, "rb") as f_in, open(temp_restore_db, "wb") as f_out:
                     shutil.copyfileobj(f_in, f_out)
 
-            # 3. 복원 대상 무결성 검증
-            check_conn = sqlite3.connect(temp_restore_db)
-            cur = check_conn.cursor()
-            cur.execute("PRAGMA integrity_check;")
-            res = cur.fetchone()
-            check_conn.close()
-            if not res or res[0] != "ok":
-                raise RuntimeError(f"복원할 백업 파일의 무결성이 손상되었습니다: {res}")
-
-            # 4. 활성 커넥션 모두 해제
+            # 3. 복원 대상 무결성 검증 및 복원 실행
             close_connection()
 
-            # 5. SQLite Online Backup API를 역방향으로 사용하여 라이브 DB에 안전하게 핫 리스토어 (Hot Restore)
-            restore_conn = sqlite3.connect(temp_restore_db)
-            live_conn = sqlite3.connect(src_db_path)
-            with live_conn:
-                restore_conn.backup(live_conn)
-            restore_conn.close()
-            live_conn.close()
+            if is_postgres:
+                # PostgreSQL pg_restore execution with clean drop/create
+                cmd = ["pg_restore", "--clean", "--if-exists", "-d", DATABASE_URL, temp_restore_db]
+                res = subprocess.run(cmd, capture_output=True, text=True)
+                # pg_restore may return 1 on warnings (e.g. notices), returncode > 1 is failure
+                if res.returncode > 1:
+                    raise RuntimeError(f"PostgreSQL pg_restore 복원 실패 (code {res.returncode}): {res.stderr}")
+            else:
+                # SQLite integrity check & restore
+                check_conn = sqlite3.connect(temp_restore_db)
+                cur = check_conn.cursor()
+                cur.execute("PRAGMA integrity_check;")
+                res = cur.fetchone()
+                check_conn.close()
+                if not res or res[0] != "ok":
+                    raise RuntimeError(f"복원할 백업 파일의 무결성이 손상되었습니다: {res}")
+
+                # SQLite Online Backup API hot restore
+                restore_conn = sqlite3.connect(temp_restore_db)
+                live_conn = sqlite3.connect(src_db_path)
+                with live_conn:
+                    restore_conn.backup(live_conn)
+                restore_conn.close()
+                live_conn.close()
 
             # 6. 첨부파일 디렉토리 복원 (있을 경우)
             if has_attachments and os.path.exists(temp_extract_dir):

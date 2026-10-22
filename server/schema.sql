@@ -24,7 +24,12 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url TEXT NOT NULL DEFAULT '',
     salt TEXT NOT NULL,
     password_hash TEXT NOT NULL,
+    hash_algo TEXT NOT NULL DEFAULT 'pbkdf2_sha256',
+    iterations INTEGER NOT NULL DEFAULT 600000,
     is_admin INTEGER NOT NULL DEFAULT 0,
+    role TEXT NOT NULL DEFAULT 'member',
+    disabled INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'active',
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
     UNIQUE(name, dept_id)
 );
@@ -52,6 +57,7 @@ CREATE TABLE IF NOT EXISTS records (
     parent_key TEXT NOT NULL DEFAULT '',
     is_scheduled INTEGER NOT NULL DEFAULT 1,
     version INTEGER NOT NULL DEFAULT 1,
+    is_private INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now')),
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
 );
@@ -190,12 +196,14 @@ CREATE TABLE IF NOT EXISTS lounge_messages (
 
 CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     user_name TEXT NOT NULL,
     user_dept_id TEXT NOT NULL,
     user_email TEXT NOT NULL DEFAULT '',
     is_admin INTEGER NOT NULL DEFAULT 0,
     created_at REAL NOT NULL  -- Unix epoch seconds
 );
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 
 CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
@@ -379,3 +387,11 @@ CREATE TABLE IF NOT EXISTS product_categories (
     spec_template TEXT NOT NULL DEFAULT '[]',
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S','now'))
 );
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    identifier TEXT NOT NULL,
+    failed_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_ident ON login_attempts(ip, identifier, failed_at);

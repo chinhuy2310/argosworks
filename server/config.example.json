@@ -5,27 +5,27 @@
   },
   "jira": {
     "enabled": false,
-    "base_url": "https://dongchinhuy.atlassian.net",
-    "email": "dongchinhuy@gmail.com",
+    "base_url": "",
+    "email": "",
     "api_token": "",
-    "default_project_key": "SCRUM",
+    "default_project_key": "",
     "default_issue_type": "",
     "default_subtask_type": "Subtask",
     "project_map": {}
   },
   "ai": {
-    "enabled": true,
+    "enabled": false,
     "provider": "gemini",
     "api_key": "",
     "model": "gemini-3.5-flash-lite",
-    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
-    "allow_user_keys": true,
+    "base_url": "",
+    "allow_user_keys": false,
     "fallback": {
       "enabled": false,
       "provider": "openai",
       "api_key": "",
       "model": "gpt-4o-mini",
-      "base_url": "https://api.openai.com/v1"
+      "base_url": ""
     }
   },
   "anthropic": {
@@ -34,11 +34,11 @@
     "model": "claude-sonnet-4-5"
   },
   "voyage": {
-    "enabled": true,
+    "enabled": false,
     "provider": "gemini",
     "api_key": "",
     "model": "gemini-embedding-001",
-    "base_url": "https://generativelanguage.googleapis.com/v1beta"
+    "base_url": ""
   },
   "workspace": {
     "name": "ARGOS WORKS",

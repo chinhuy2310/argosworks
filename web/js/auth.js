@@ -521,6 +521,16 @@ updateTopbarUserUI(null);
   if(btnOpen) btnOpen.addEventListener("click", openEditModal);
   if(btnClose) btnClose.addEventListener("click", closeEditModal);
   if(btnCancel) btnCancel.addEventListener("click", closeEditModal);
+  if(modal){
+    modal.addEventListener("click", function(e){
+      if(e.target === modal) closeEditModal();
+    });
+  }
+  document.addEventListener("keydown", function(e){
+    if(e.key === "Escape" && modal && !modal.hidden){
+      closeEditModal();
+    }
+  });
 
   if(form){
     form.addEventListener("submit", async function(e){

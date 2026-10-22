@@ -114,6 +114,20 @@ def handle_product_save(handler, raw_body, ip):
     handler._send_json(200, {"ok": True, "product": product})
 
 def handle_product_attachment_upload(handler, raw_body, ip):
+    session = handler._get_session_or_401()
+    if not session:
+        return
+
+    from services.license_manager import is_system_read_only
+    if is_system_read_only():
+        handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+        return
+
+    from services.auth import can_modify_pim
+    if not can_modify_pim(session):
+        handler._send_json(403, {"ok": False, "error": "PIM 제품 및 첨부파일 관리 권한이 없습니다. (영업/경영 부서 관리자 또는 시스템 관리자만 가능)"})
+        return
+
     content_type = handler.headers.get("Content-Type", "")
     m = re.search(r'boundary="?([^";]+)"?', content_type)
     if not m:
@@ -153,6 +167,20 @@ def handle_product_attachment_upload(handler, raw_body, ip):
     handler._send_json(200, {"ok": True, "product": product, "added": added})
 
 def handle_product_attachment_delete(handler, raw_body, ip):
+    session = handler._get_session_or_401()
+    if not session:
+        return
+
+    from services.license_manager import is_system_read_only
+    if is_system_read_only():
+        handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+        return
+
+    from services.auth import can_modify_pim
+    if not can_modify_pim(session):
+        handler._send_json(403, {"ok": False, "error": "PIM 제품 및 첨부파일 관리 권한이 없습니다. (영업/경영 부서 관리자 또는 시스템 관리자만 가능)"})
+        return
+
     try:
         payload = json.loads(raw_body.decode("utf-8") or "{}")
     except Exception:

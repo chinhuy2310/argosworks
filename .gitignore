@@ -8,6 +8,8 @@
 .env.*.local
 .csrf_secret
 data/.csrf_secret
+server/config.json
+config.json
 
 # SQLite Databases & Dynamic Production Data
 *.db

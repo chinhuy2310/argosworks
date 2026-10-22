@@ -2,6 +2,12 @@ import os
 import re
 import json
 
+DANGEROUS_EXTENSIONS = {
+    ".html", ".htm", ".xhtml", ".svg", ".js", ".mjs", ".xml",
+    ".php", ".phtml", ".exe", ".sh", ".bat", ".cmd", ".ps1",
+    ".vbs", ".scr", ".dll", ".so", ".dylib", ".cgi", ".pl"
+}
+
 def atomic_write_json(filepath, data):
     """Write JSON data atomically using temp file + os.replace"""
     tmp = filepath + f'.{os.getpid()}.tmp'
@@ -10,9 +16,17 @@ def atomic_write_json(filepath, data):
     os.replace(tmp, filepath)
 
 def sanitize_filename(name):
+    """Sanitize filename to prevent directory traversal and stored XSS/code execution.
+    Dangerous extensions (.html, .svg, .js, etc.) are converted to .bin.
+    """
     name = os.path.basename(name or "file")
     name = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", name).strip()
-    return name or "file"
+    if not name:
+        name = "file.bin"
+    base, ext = os.path.splitext(name)
+    if ext.lower() in DANGEROUS_EXTENSIONS:
+        name = f"{base}.bin"
+    return name
 
 def unique_attachment_name(dir_path, filename):
     """같은 제품에 같은 이름의 파일을 두 번 올려도 기존 파일을 덮어쓰지 않도록,

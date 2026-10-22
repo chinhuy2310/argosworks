@@ -24,6 +24,22 @@ function getAuthHeaders(){
   return {};
 }
 
+function safeParseJson(response) {
+  return response.text().then(function(text) {
+    if (!text) {
+      return response.ok ? { ok: true } : { ok: false, error: "HTTP " + response.status };
+    }
+    try {
+      return JSON.parse(text);
+    } catch(err) {
+      return {
+        ok: false,
+        error: "서버 응답 오류 (HTTP " + response.status + "): 유효하지 않은 JSON 응답입니다."
+      };
+    }
+  });
+}
+
 function apiGet(path){
   return fetch(path, {
     method: "GET",
@@ -36,7 +52,7 @@ function apiGet(path){
         handleAuthExpired();
       }
     }
-    return r.json();
+    return safeParseJson(r);
   });
 }
 window.apiGet = apiGet;
@@ -81,7 +97,7 @@ function apiPostJson(path, body){
               headers: headers,
               body: JSON.stringify(body)
             });
-            return retryRes.json();
+            return safeParseJson(retryRes);
           }
         }
       } catch(e){}
@@ -91,7 +107,7 @@ function apiPostJson(path, body){
         handleAuthExpired();
       }
     }
-    return r.json();
+    return safeParseJson(r);
   });
 }
 window.apiPostJson = apiPostJson;

@@ -73,6 +73,10 @@ def handle_submit(handler, raw_body, ip):
     if not due_date:
         due_date = start_date
 
+    if start_date and due_date and start_date > due_date:
+        handler._send_json(400, {"ok": False, "error": "마감일은 시작일보다 빠를 수 없습니다. (마감일 >= 시작일)"})
+        return
+
     filenames = [sanitize_filename(f["filename"]) for f in files]
 
     claude_result = None

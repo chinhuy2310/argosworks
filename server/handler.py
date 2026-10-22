@@ -13,6 +13,32 @@ from utils.logging import log_line, access_log
 from middleware_security import check_rate_limit, validate_csrf_token, get_allowed_cors_origin
 from db import close_connection
 
+PUBLIC_API_WHITELIST = {
+    # System health & Setup
+    "/api/health",
+    "/api/setup/status",
+    "/api/setup/verify-license",
+    "/api/setup/complete",
+
+    # Authentication & Session Handshake
+    "/api/account/check",
+    "/api/auth/check",
+    "/api/account/login",
+    "/api/auth/login",
+    "/api/account/register",
+    "/api/auth/register",
+    "/api/account/csrf",
+    "/api/auth/csrf",
+    "/api/account/logout",
+    "/api/auth/logout",
+    "/api/account/logout-all",
+    "/api/auth/logout-all",
+    "/api/account/me",
+
+    # Public Workspace UI Branding
+    "/api/workspace-config",
+}
+
 class ArgosHandler(BaseHTTPRequestHandler):
     server_version = "ArgosServer/2.0"
     cfg = None  # class-level, set in main()
@@ -67,24 +93,36 @@ class ArgosHandler(BaseHTTPRequestHandler):
     def _extract_client_ip(self):
         """
         Extract real client IP considering trusted reverse proxy headers (X-Forwarded-For).
-        Prevents rate limiter from collapsing all proxy users into a single IP.
+        Only trusts X-Forwarded-For / X-Real-IP if direct connection peer is in TRUSTED_PROXIES.
         """
-        xff = self.headers.get("X-Forwarded-For")
-        if xff:
-            # Client IP is the first IP in the X-Forwarded-For chain
-            parts = [p.strip() for p in xff.split(",")]
-            if parts and parts[0]:
-                return parts[0]
-        real_ip = self.headers.get("X-Real-IP")
-        if real_ip:
-            return real_ip.strip()
-        return self.address_string()
+        peer_ip = ""
+        try:
+            peer_ip = self.client_address[0]
+        except Exception:
+            peer_ip = self.address_string()
+
+        trusted_proxies_cfg = os.environ.get("TRUSTED_PROXIES", "127.0.0.1,::1,localhost")
+        trusted_proxies = {p.strip() for p in trusted_proxies_cfg.split(",") if p.strip()}
+
+        # Only trust proxy headers when request comes from a trusted reverse proxy
+        if peer_ip in trusted_proxies or "0.0.0.0" in trusted_proxies:
+            xff = self.headers.get("X-Forwarded-For")
+            if xff:
+                parts = [p.strip() for p in xff.split(",")]
+                if parts and parts[0]:
+                    return parts[0]
+            real_ip = self.headers.get("X-Real-IP")
+            if real_ip and real_ip.strip():
+                return real_ip.strip()
+
+        return peer_ip
 
     def _extract_token(self):
         """
         인증 토큰을 안전하게 추출한다.
         1. Cookie 헤더 (argos_token=<token>) - XSS / F12 방어형 HttpOnly
         2. Authorization: Bearer <token> - 하위 호환성 및 API 클라이언트 지원
+        * 보안 강화: Query string (?token=...) 전송은 전면 차단 (URL 로깅 및 어깨 너머 노출 방지).
         """
         # 1. Cookie 우선 검사
         cookie_header = self.headers.get("Cookie", "") or ""
@@ -103,20 +141,14 @@ class ArgosHandler(BaseHTTPRequestHandler):
         if auth.startswith("Bearer "):
             return auth[7:].strip()
 
-        # 3. Query string token (?token=...) — Dành riêng cho EventSource (SSE) của browser
-        try:
-            from urllib.parse import urlsplit, parse_qs
-            qs = parse_qs(urlsplit(self.path).query)
-            if "token" in qs and qs["token"]:
-                return qs["token"][0].strip()
-        except Exception:
-            pass
-
         return ""
 
     def _get_session_or_401(self):
+        if hasattr(self, "_current_session") and self._current_session:
+            return self._current_session
         token = self._extract_token()
         session = get_session(token) if token else None
+        self._current_session = session
         if not session:
             self._send_json(401, {"ok": False, "error": "로그인이 필요합니다.", "authRequired": True})
             return None
@@ -126,8 +158,12 @@ class ArgosHandler(BaseHTTPRequestHandler):
         """로그인 여부가 필수는 아니지만, 로그인돼 있으면 그 정보를 쓰고 싶은 곳에서
         사용한다(예: /api/ask에서 본인 캘린더까지 검색 범위에 포함시킬지 여부).
         토큰이 없거나 유효하지 않아도 401을 보내지 않고 조용히 None을 돌려준다."""
+        if hasattr(self, "_current_session") and self._current_session is not None:
+            return self._current_session
         token = self._extract_token()
-        return get_session(token) if token else None
+        session = get_session(token) if token else None
+        self._current_session = session
+        return session
 
     def _send_file(self, path, content_type):
         try:
@@ -178,6 +214,8 @@ class ArgosHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Content-Disposition",
                           "attachment; filename*=UTF-8''" + urllib.parse.quote(download_name))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "sandbox")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
@@ -243,6 +281,11 @@ class ArgosHandler(BaseHTTPRequestHandler):
                     self._send_json(429, {"ok": False, "error": f"요청 한도(Rate limit)를 초과했습니다. {retry_after}초 후 다시 시도하세요."}, extra_headers=[("Retry-After", str(retry_after))])
                     return
 
+                # Default Authentication Guard: all /api endpoints require login unless whitelisted
+                if path not in PUBLIC_API_WHITELIST:
+                    if not self._get_session_or_401():
+                        return
+
             try:
                 route_type, handler_or_path, content_type = match_get(path)
                 
@@ -281,16 +324,13 @@ class ArgosHandler(BaseHTTPRequestHandler):
                     self._send_json(429, {"ok": False, "error": f"요청 한도(Rate limit)를 초과했습니다. {retry_after}초 후 다시 시도하세요."}, extra_headers=[("Retry-After", str(retry_after))])
                     return
 
-                # CSRF Protection for state-changing endpoints (exempt login/auth endpoints)
-                public_post_endpoints = (
-                    "/api/account/login", "/api/auth/login",
-                    "/api/account/check", "/api/auth/check",
-                    "/api/account/register", "/api/auth/register",
-                    "/api/account/logout", "/api/auth/logout",
-                    "/api/account/logout-all", "/api/auth/logout-all",
-                    "/api/chat/stream"
-                )
-                if path not in public_post_endpoints:
+                # Default Authentication Guard: all /api endpoints require login unless whitelisted
+                if path not in PUBLIC_API_WHITELIST:
+                    if not self._get_session_or_401():
+                        return
+
+                # CSRF Protection for state-changing endpoints (exempt whitelisted public endpoints)
+                if path not in PUBLIC_API_WHITELIST:
                     csrf_header = self.headers.get("X-CSRF-Token", "")
                     session_token = self._extract_token()
                     # If request has session cookie, validate CSRF token to prevent cross-site request forgery

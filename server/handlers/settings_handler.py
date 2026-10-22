@@ -273,6 +273,27 @@ def handle_post_settings(handler, raw_body, ip):
         handler._send_json(400, {"ok": False, "error": "설정 데이터는 객체 형태여야 합니다."})
         return
 
+    # SSRF Protection: Validate admin-supplied URLs before saving
+    from utils.ssrf import validate_external_url
+    url_checks = [
+        ("AI_BASE_URL", updates.get("AI_BASE_URL"), updates.get("AI_PROVIDER") == "ollama"),
+        ("AI_FALLBACK_BASE_URL", updates.get("AI_FALLBACK_BASE_URL"), updates.get("AI_FALLBACK_PROVIDER") == "ollama"),
+        ("VOYAGE_BASE_URL", updates.get("VOYAGE_BASE_URL"), False),
+        ("JIRA_BASE_URL", updates.get("JIRA_BASE_URL"), False),
+        ("WORKSPACE_LOGO_URL", updates.get("WORKSPACE_LOGO_URL"), False),
+        ("SLACK_WEBHOOK_URL", updates.get("SLACK_WEBHOOK_URL"), False),
+        ("TEAMS_WEBHOOK_URL", updates.get("TEAMS_WEBHOOK_URL"), False),
+        ("GENERIC_WEBHOOK_URL", updates.get("GENERIC_WEBHOOK_URL"), False),
+    ]
+    for key, val, is_ollama in url_checks:
+        if val and isinstance(val, str) and val.strip():
+            u = val.strip()
+            try:
+                validate_external_url(u, allow_private=is_ollama, require_https=(not is_ollama))
+            except ValueError as ve:
+                handler._send_json(400, {"ok": False, "error": f"{key} 검증 실패: {str(ve)}"})
+                return
+
     # Update .env file
     _write_env_updates(updates)
 

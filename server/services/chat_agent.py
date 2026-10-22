@@ -28,14 +28,18 @@ def run_agent_conversation(messages, current_user, cfg,
     """
     effective_cfg = dict(cfg)
     if custom_ai_config and isinstance(custom_ai_config, dict):
-        # Override AI configuration with user-provided personal key
+        # Override AI configuration with user-provided personal key (BYOK)
+        # SSRF 방어: 일반 사용자가 제출한 임의의 baseUrl은 전면 차단하며, baseUrl은 시스템이 지정한 공식 엔드포인트만 사용
+        from services.ai_client import _PROVIDER_DEFAULTS
         user_ai = dict(cfg.get("ai", {}))
+        prov = custom_ai_config.get("provider") or user_ai.get("provider", "gemini")
+        system_base_url = user_ai.get("base_url") or _PROVIDER_DEFAULTS.get(prov, {}).get("base_url", "")
         user_ai.update({
             "enabled": True,
-            "provider": custom_ai_config.get("provider") or user_ai.get("provider", "gemini"),
+            "provider": prov,
             "model": custom_ai_config.get("model") or user_ai.get("model", ""),
             "api_key": custom_ai_config.get("apiKey") or custom_ai_config.get("api_key") or user_ai.get("api_key", ""),
-            "base_url": custom_ai_config.get("baseUrl") or custom_ai_config.get("base_url") or user_ai.get("base_url", "")
+            "base_url": system_base_url
         })
         effective_cfg["ai"] = user_ai
 

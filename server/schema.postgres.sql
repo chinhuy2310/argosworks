@@ -233,12 +233,14 @@ CREATE INDEX IF NOT EXISTS idx_lounge_conversation ON lounge_messages(conversati
 -- 16. Sessions (Auth)
 CREATE TABLE IF NOT EXISTS sessions (
     token VARCHAR(255) PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
     user_name VARCHAR(128) NOT NULL,
     user_dept_id VARCHAR(64) NOT NULL,
     user_email VARCHAR(255) NOT NULL DEFAULT '',
     is_admin INTEGER NOT NULL DEFAULT 0,
     created_at DOUBLE PRECISION NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);
 
 -- 17. Notifications

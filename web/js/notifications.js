@@ -578,7 +578,7 @@
                   (sessionStorage.getItem("argosToken") || localStorage.getItem("argosToken") || sessionStorage.getItem("jarvisToken") || localStorage.getItem("jarvisToken"));
       if(!token) return;
 
-      var url = "/api/notifications/stream?token=" + encodeURIComponent(token);
+      var url = "/api/notifications/stream";
       var evtSource = new EventSource(url);
 
       evtSource.addEventListener("new_notification", function(e){

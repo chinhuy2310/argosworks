@@ -642,6 +642,14 @@ if(form){
       formError.classList.add("show");
       return;
     }
+
+    var sDateVal = startDateInput ? (startDateInput.value || "") : "";
+    var dDateVal = dueDateInput ? (dueDateInput.value || "") : "";
+    if(sDateVal && dDateVal && dDateVal < sDateVal){
+      formError.textContent = "마감일은 시작일보다 빠를 수 없습니다. (마감일 >= 시작일)";
+      formError.classList.add("show");
+      return;
+    }
     formError.classList.remove("show");
 
     submitBtn.disabled = true;

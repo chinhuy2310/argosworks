@@ -45,25 +45,25 @@ from utils.logging import log_line
 def handle_get_health(handler, parsed, ip):
     """
     Comprehensive Enterprise Health Check.
-    Checks DB connectivity (SELECT 1), disk space, and memory status.
+    Checks DB connectivity (SELECT 1) without leaking internal database error messages.
     Returns HTTP 200 if healthy, HTTP 503 if DB is unreachable.
     """
     db_ok = False
-    db_error = None
     try:
         from db import query
         res = query("SELECT 1 as ping")
         if res and res[0].get("ping") == 1:
             db_ok = True
     except Exception as e:
-        db_error = str(e)
+        from utils.logging import log_line
+        log_line(f"[HealthCheck] Database ping failed from {ip}: {e}")
 
     health_status = {
         "ok": db_ok,
+        "status": "healthy" if db_ok else "unhealthy",
         "time": datetime.now().isoformat(),
         "database": {
-            "status": "connected" if db_ok else "unhealthy",
-            "error": db_error
+            "status": "connected" if db_ok else "unavailable"
         }
     }
 
@@ -164,8 +164,8 @@ def handle_get_records(handler, parsed, ip):
     qs = parse_qs(parsed.query)
     mode = (qs.get("mode", ["all"])[0])
     records, cache = merged_records(handler.cfg)
-    from services.auth import can_view_record
-    records = [r for r in records if can_view_record(session, r)]
+    from services.auth import visible_records, can_view_record
+    records = visible_records(session, records)
     jira_records = [r for r in (cache["records"] or []) if can_view_record(session, r)]
     total = len(records)
 
@@ -268,7 +268,9 @@ def handle_get_ask(handler, parsed, ip):
     search_q = f"{question} {extra_terms}".strip() if extra_terms else question
 
     # 1. 키워드 기반 기본 검색 (고유명사, Jira 키, 이름 정확 매칭에 강함)
+    from services.auth import visible_records, can_view_record
     records, _cache = merged_records(handler.cfg)
+    records = visible_records(session, records)
     records = list(records) + [product_as_search_record(p) for p in read_products(include_external=True)]
     if session is not None:
         owner_key = account_key(session["name"], session["org"])
@@ -281,7 +283,7 @@ def handle_get_ask(handler, parsed, ip):
     v_candidates = []
     if is_voyage_configured(handler.cfg):
         try:
-            v_candidates = search_vector_store(handler.cfg, search_q, limit=30, min_similarity=0.15)
+            v_candidates = search_vector_store(handler.cfg, search_q, limit=30, min_similarity=0.15, session=session)
         except Exception as e:
             log_line(f"[Ask] 벡터 검색 오류: {str(e)}")
             v_candidates = []
@@ -527,7 +529,30 @@ def handle_post_notification_read_all(handler, raw_body, ip):
     handler._send_json(200, {"ok": ok})
     access_log(ip, "notif_read_all", 200, f"user={user_name}")
 
+_vector_sync_rate_limits = {}
+_vector_sync_rate_lock = threading.Lock()
+
 def handle_post_vector_sync(handler, raw_body, ip):
+    session = handler._get_session_or_401()
+    if not session:
+        return
+
+    from services.auth import is_manager_or_admin
+    if not is_manager_or_admin(session):
+        handler._send_json(403, {"ok": False, "error": "벡터 색인 동기화는 부서 관리자(Manager) 또는 시스템 관리자(Admin)만 실행할 수 있습니다."})
+        return
+
+    # Dedicated Rate Limit: 1 per minute per user
+    user_key = f"{session.get('id') or session.get('name')}:{ip}"
+    now = time.time()
+    with _vector_sync_rate_lock:
+        last_time = _vector_sync_rate_limits.get(user_key, 0)
+        if now - last_time < 60:
+            remaining = int(60 - (now - last_time))
+            handler._send_json(429, {"ok": False, "error": f"벡터 동기화 요청이 너무 빈번합니다. {remaining}초 후 다시 시도해주세요. (1분당 1회 제한)"})
+            return
+        _vector_sync_rate_limits[user_key] = now
+
     body = {}
     if raw_body:
         try:
@@ -1061,8 +1086,28 @@ def handle_get_local_attachment(handler, parsed, ip):
         return
     record_id = parts[2]
     filename = "/".join(parts[3:])
+
+    # 1. Tra cứu bản ghi và xác minh quyền can_view_record
+    from services.data_store import find_record_by_key_or_code
+    from services.auth import can_view_record
+    from db import get_one
     
-    file_path = os.path.normpath(os.path.join(ATTACH_DIR, record_id, filename))
+    rec = None
+    try:
+        rid_int = int(record_id)
+        rec = get_one("SELECT * FROM records WHERE id = ? LIMIT 1", (rid_int,))
+    except Exception:
+        rec = find_record_by_key_or_code(record_id)
+
+    if not rec:
+        handler._send_json(404, {"ok": False, "error": "해당 업무 카드를 찾을 수 없습니다."})
+        return
+
+    if not can_view_record(session, rec):
+        handler._send_json(403, {"ok": False, "error": "해당 업무 카드의 첨부파일을 열람할 권한이 없습니다."})
+        return
+    
+    file_path = os.path.normpath(os.path.join(ATTACH_DIR, str(record_id), filename))
     if not file_path.startswith(os.path.normpath(ATTACH_DIR)) or not os.path.isfile(file_path):
         handler._send_json(404, {"ok": False, "error": "첨부파일을 찾을 수 없습니다."})
         return
@@ -1072,7 +1117,9 @@ def handle_get_local_attachment(handler, parsed, ip):
     
     ct, _ = mimetypes.guess_type(file_path)
     content_type = ct or "application/octet-stream"
-    disp_type = "inline" if (preview or content_type.startswith(("image/", "text/", "application/pdf"))) else "attachment"
+    ext = os.path.splitext(file_path)[1].lower()
+    safe_inline_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf"}
+    disp_type = "inline" if (preview and ext in safe_inline_exts) else "attachment"
     
     try:
         with open(file_path, "rb") as f:
@@ -1081,6 +1128,8 @@ def handle_get_local_attachment(handler, parsed, ip):
         handler.send_header("Content-Type", content_type)
         handler.send_header("Content-Length", str(len(data)))
         handler.send_header("Content-Disposition", f"{disp_type}; filename*=UTF-8''{urllib.parse.quote(os.path.basename(file_path))}")
+        handler.send_header("X-Content-Type-Options", "nosniff")
+        handler.send_header("Content-Security-Policy", "sandbox")
         handler.send_header("Cache-Control", "no-cache")
         handler.end_headers()
         handler.wfile.write(data)
@@ -2342,6 +2391,10 @@ def handle_post_admin_user_update(handler, raw_body, ip):
     if updates:
         params.append(user_id)
         execute(f"UPDATE users SET {', '.join(updates)} WHERE id = ?", tuple(params))
+        from services.auth import delete_all_user_sessions
+        # Admin이 권한 변경, 계정 잠금(비활성화), 또는 비밀번호 변경 시 해당 사용자의 모든 활성 세션을 즉시 강제 만료
+        if role or disabled is not None or new_password:
+            delete_all_user_sessions(user_id)
         from services.audit_logger import log_audit
         log_audit(session, ip, "USER_ROLE_UPDATE", "user", target_user.get("username"), details={"role": role, "disabled": disabled, "dept": dept_id})
     handler._send_json(200, {"ok": True, "message": "사용자 정보 및 권한이 변경되었습니다."})
@@ -2370,7 +2423,8 @@ def handle_post_admin_user_delete(handler, raw_body, ip):
         handler._send_json(400, {"ok": False, "error": "현재 로그인된 본인 계정은 삭제할 수 없습니다."})
         return
 
-    from services.auth import safe_delete_user
+    from services.auth import safe_delete_user, delete_all_user_sessions
+    delete_all_user_sessions(user_id)
     ok = safe_delete_user(user_id)
     if not ok:
         handler._send_json(500, {"ok": False, "error": "사용자 삭제 처리에 실패했습니다."})
@@ -2448,6 +2502,8 @@ def handle_post_admin_user_reject(handler, raw_body, ip):
         return
 
     execute("UPDATE users SET status = 'rejected', disabled = 1 WHERE id = ?", (user_id,))
+    from services.auth import delete_all_user_sessions
+    delete_all_user_sessions(user_id)
 
     from services.audit_logger import log_audit
     log_audit(session, ip, "USER_REJECT", "user", target_user.get("username"), details={"name": target_user.get("name"), "dept": target_user.get("dept_id")})

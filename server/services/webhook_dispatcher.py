@@ -27,7 +27,13 @@ def _send_http_post(url: str, payload: Dict[str, Any], timeout: int = 5) -> Opti
         return None
     except Exception as e:
         # Non-blocking: never crash application if external webhook fails
-        print(f"[Webhook] Dispatch to {url} failed: {e}")
+        # Mask webhook URL in logs to prevent token/secret leakage
+        try:
+            parsed_u = urllib.parse.urlsplit(url)
+            masked_url = f"{parsed_u.scheme}://{parsed_u.netloc}/***"
+        except Exception:
+            masked_url = "***"
+        print(f"[Webhook] Dispatch to {masked_url} failed: {e}")
         return str(e)
 
 def format_slack_payload(title: str, content: str, sender: str, link_id: str = "", tag: str = "") -> Dict[str, Any]:
