@@ -49,6 +49,12 @@ env/
 
 # OS-Specific Files
 Thumbs.db
+Desktop.ini
+.DS_Store
+
+# GitHub Workflows (requires 'workflow' scope on PAT)
+.github/
+Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
