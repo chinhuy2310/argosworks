@@ -71,11 +71,12 @@ class TestEnterpriseSetupWizard(unittest.TestCase):
         execute("DELETE FROM users")
         for u in self.original_users:
             execute("""
-                INSERT OR REPLACE INTO users (id, username, name, dept_id, email, salt, password_hash, is_admin, role, disabled, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO users (id, username, name, dept_id, email, salt, password_hash, is_admin, role, disabled, status, iterations, hash_algo, avatar_url, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (u["id"], u.get("username", u["name"]), u["name"], u["dept_id"], u["email"],
                   u["salt"], u["password_hash"], u["is_admin"], u.get("role", "member"),
-                  u.get("disabled", 0), u.get("status", "active"), u["created_at"]))
+                  u.get("disabled", 0), u.get("status", "active"), u.get("iterations", 100000),
+                  u.get("hash_algo", "pbkdf2_sha256"), u.get("avatar_url", ""), u["created_at"]))
 
     def test_setup_status_when_no_users(self):
         self.assertTrue(check_needs_setup())

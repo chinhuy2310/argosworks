@@ -233,7 +233,7 @@ def handle_account_login(handler, raw_body, ip):
     avatar_url = acc.get("avatar_url", "")
     token = create_session(name, org, email, user_id=acc.get("id"))
     access_log(ip, "account_login", 200, "%s|%s" % (name, org))
-    is_adm = is_admin_user(name, email)
+    is_adm = bool(acc.get("role") == "admin" or acc.get("is_admin") == 1 or is_admin_user(acc))
     from services.auth import get_user_role
     user_role = get_user_role(acc)
     from services.audit_logger import log_audit
