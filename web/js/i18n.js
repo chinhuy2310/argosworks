@@ -45,6 +45,12 @@
       "title.history": "업무 이력 로그",
       "title.settings": "환경설정",
 
+      // Submit Form Guest Notice
+      "form.guest_title": "로그인이 필요한 기능입니다",
+      "form.guest_desc": "새로운 업무 카드 등록 및 작업 배정은 사내 인증 계정으로 로그인한 사용자만 이용할 수 있습니다.<br>계정으로 로그인하여 업무 등록을 진행해 주세요.",
+      "form.guest_login_btn": "로그인하기",
+      "form.guest_home_btn": "홈으로 이동",
+
       // Dashboard Categories & Filter Toolbar
       "dept.all": "전체",
       "dept.waiting_count": "대기 {count}건",
@@ -182,6 +188,12 @@
       "title.chat": "AI Assistant",
       "title.history": "Audit Activity Log",
       "title.settings": "System Settings",
+
+      // Submit Form Guest Notice
+      "form.guest_title": "Authentication Required",
+      "form.guest_desc": "Registering new tasks and creating cards is only available for authenticated team members.<br>Please log in with your company account to proceed.",
+      "form.guest_login_btn": "Log In",
+      "form.guest_home_btn": "Go to Home",
 
       // Dashboard Categories & Filter Toolbar
       "dept.all": "All",

@@ -167,6 +167,12 @@ function applyLogin(user){
   updateSubmitAvailability();
   updateTopbarUserUI(user);
 
+  // Toggle View Form vs Guest Gate
+  var guestGate = document.getElementById("viewFormGuestPlaceholder");
+  var submitForm = document.getElementById("submitForm");
+  if(guestGate) { guestGate.hidden = true; guestGate.style.display = "none"; }
+  if(submitForm) { submitForm.hidden = false; submitForm.style.display = ""; }
+
   var isMgr = Boolean(isAdm || user.role === 'manager');
   user.isManager = isMgr;
 
@@ -234,6 +240,12 @@ function applyLogout(){
   updateTopbarUserUI(null);
   if(submitterField) submitterField.value = "우측 상단에서 이름/소속을 입력하면 자동으로 채워집니다";
   updateSubmitAvailability();
+
+  // Toggle View Form vs Guest Gate on logout
+  var guestGateLogout = document.getElementById("viewFormGuestPlaceholder");
+  var submitFormLogout = document.getElementById("submitForm");
+  if(guestGateLogout) { guestGateLogout.hidden = false; guestGateLogout.style.display = "flex"; }
+  if(submitFormLogout) { submitFormLogout.hidden = true; submitFormLogout.style.display = "none"; }
 
   // 로그아웃 시 AI Chat 탭 숨김
   if(el.tabChat){

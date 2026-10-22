@@ -115,9 +115,19 @@ function showTab(which, updateHash){
   }
   if(typeof updateJiraIntegrationUI === "function") updateJiraIntegrationUI();
   if(which === "form") {
-    var curOrg = (document.getElementById("orgSelect") && document.getElementById("orgSelect").value) || (typeof loggedInUser !== "undefined" && loggedInUser && loggedInUser.org) || "";
-    if(typeof window.populateParentKeySelect === "function") window.populateParentKeySelect(curOrg);
-    if(typeof window.populateParticipantsSelect === "function") window.populateParticipantsSelect(curOrg);
+    var isUserLoggedIn = Boolean(window.loggedInUser || (typeof loggedInUser !== "undefined" && loggedInUser) || sessionStorage.getItem("argosUser") || localStorage.getItem("argosUser"));
+    var guestGate = document.getElementById("viewFormGuestPlaceholder");
+    var submitForm = document.getElementById("submitForm");
+    if(!isUserLoggedIn){
+      if(guestGate) { guestGate.hidden = false; guestGate.style.display = "flex"; }
+      if(submitForm) { submitForm.hidden = true; submitForm.style.display = "none"; }
+    } else {
+      if(guestGate) { guestGate.hidden = true; guestGate.style.display = "none"; }
+      if(submitForm) { submitForm.hidden = false; submitForm.style.display = ""; }
+      var curOrg = (document.getElementById("orgSelect") && document.getElementById("orgSelect").value) || (typeof loggedInUser !== "undefined" && loggedInUser && loggedInUser.org) || "";
+      if(typeof window.populateParentKeySelect === "function") window.populateParentKeySelect(curOrg);
+      if(typeof window.populateParticipantsSelect === "function") window.populateParticipantsSelect(curOrg);
+    }
   }
   if(which === "schedule" && typeof loadSchedule === "function") loadSchedule();
   if(which === "pim") {

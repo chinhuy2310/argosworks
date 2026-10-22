@@ -543,6 +543,26 @@
 
   <!-- ============ SUBMIT FORM VIEW ============ -->
   <section id="viewForm" hidden>
+    <!-- GUEST NOTICE: Visible when NOT logged in -->
+    <div id="viewFormGuestPlaceholder" class="form-guest-gate" hidden style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 420px; padding: 48px 24px; text-align: center; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; margin: 20px auto; max-width: 640px;">
+      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(51, 170, 211, 0.12); color: var(--vs-cyan, #33aad3); display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 20px;">
+        🔒
+      </div>
+      <h3 style="font-size: 20px; font-weight: 700; color: var(--ink); margin: 0 0 10px 0;" data-i18n="form.guest_title">로그인이 필요한 기능입니다</h3>
+      <p style="font-size: 14.5px; color: var(--text-muted); max-width: 480px; margin: 0 0 28px 0; line-height: 1.6;" data-i18n="form.guest_desc">
+        새로운 업무 카드 등록 및 작업 배정은 사내 인증 계정으로 로그인한 사용자만 이용할 수 있습니다.<br>
+        계정으로 로그인하여 업무 등록을 진행해 주세요.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+        <a href="/login" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 11px 24px; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+          <span>🔑</span> <span data-i18n="form.guest_login_btn">로그인하기</span>
+        </a>
+        <button type="button" class="btn-secondary" onclick="showTab('home')" style="padding: 11px 22px; font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer;">
+          <span data-i18n="form.guest_home_btn">홈으로 이동</span>
+        </button>
+      </div>
+    </div>
+
     <form id="submitForm" autocomplete="off">
       <div class="form-grid">
         <!-- Cột Trái: Nội dung công việc & Tệp đính kèm -->
@@ -2676,9 +2696,9 @@
 <div id="toast" role="status"></div>
 
 <script src="js/utils.js?v=4.3"></script>
-<script src="js/i18n.js?v=1.5"></script>
+<script src="js/i18n.js?v=1.6"></script>
 <script src="js/api.js?v=5.1"></script>
-<script src="js/auth.js?v=5.0"></script>
+<script src="js/auth.js?v=5.1"></script>
 <script src="js/dashboard.js?v=8.2"></script>
 <script src="js/jira-form.js?v=6.2"></script>
 <script src="js/calendar.js?v=8.2"></script>
@@ -2690,7 +2710,7 @@
 <script src="js/chat.js?v=3.3"></script>
 <script src="js/canvas.js?v=6.8"></script>
 <script src="js/notifications.js?v=2.1"></script>
-<script src="js/app.js?v=6.7"></script>
+<script src="js/app.js?v=6.8"></script>
 
 </body>
 </html>
