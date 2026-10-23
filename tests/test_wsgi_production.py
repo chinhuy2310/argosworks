@@ -123,11 +123,17 @@ class TestWSGIProduction(unittest.TestCase):
 
     def test_static_index_html(self):
         """GET / should serve the SPA index.html with appropriate enterprise security headers."""
-        res = self.client.get("/")
-        self.assertEqual(res["status_code"], 200)
-        self.assertIn(b"ARGOS WORKS", res["body"])
-        self.assertEqual(res["headers_dict"].get("x-frame-options"), "SAMEORIGIN")
-        self.assertEqual(res["headers_dict"].get("x-content-type-options"), "nosniff")
+        import handlers.setup_handler as setup_handler
+        old_cache = setup_handler._setup_completed_cache
+        setup_handler._setup_completed_cache = True
+        try:
+            res = self.client.get("/")
+            self.assertEqual(res["status_code"], 200)
+            self.assertIn(b"ARGOS WORKS", res["body"])
+            self.assertEqual(res["headers_dict"].get("x-frame-options"), "SAMEORIGIN")
+            self.assertEqual(res["headers_dict"].get("x-content-type-options"), "nosniff")
+        finally:
+            setup_handler._setup_completed_cache = old_cache
 
     def test_no_hop_by_hop_headers(self):
         """PEP 3333 prohibits hop-by-hop headers in WSGI application responses."""

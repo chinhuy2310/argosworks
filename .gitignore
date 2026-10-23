@@ -52,6 +52,14 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+# Enterprise Product Presentations & Brochures (Local-first, not tracked in git)
+docs/*.pdf
+docs/*.html
+docs/images/
+.env.bak*
+temp_env.txt
+
+
 # GitHub Actions workflows are versioned with the code: if CI is not committed,
 # it never runs, and every quality gate silently disappears.
 # (.github/ used to be ignored here — do not re-add it.)

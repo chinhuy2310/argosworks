@@ -402,3 +402,17 @@ CREATE TABLE IF NOT EXISTS ai_usage (
 );
 CREATE INDEX IF NOT EXISTS idx_ai_usage_user ON ai_usage(user_name, created_at);
 CREATE INDEX IF NOT EXISTS idx_ai_usage_dept ON ai_usage(dept_id, created_at);
+
+-- Baseline Department & License Seeds for PostgreSQL
+INSERT INTO departments (id, name, color_index, local_prefix, jira_key, custom_categories) VALUES
+('mgmt', 'Ban Lãnh Đạo & Điều Hành', 1, 'MGMT', 'MGMT', '["Chiến Lược","Kế Hoạch","Duyệt Chi","Báo Cáo"]'),
+('dev', 'Khối Kỹ Thuật & AI', 2, 'DEV', 'ARGOS', '["Hạ Tầng","Tính Năng","Bảo Mật","Tối Ưu","API"]'),
+('sales', 'Khối Kinh Doanh B2B', 3, 'SALES', 'SALES', '["Hợp Đồng","Khách Hàng","Đối Tác","Đấu Thầu"]'),
+('hr', 'Phòng Nhân Sự & Vận Hành', 4, 'HR', 'HR', '["Tuyển Dụng","Đào Tạo","Chính Sách","Văn Hóa"]'),
+('hq', 'Ban Kiểm Soát & Tuân Thủ', 5, 'HQ', 'HQ', '["Kiểm Toán","Pháp Lý","SLA","Đánh Giá"]')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO license_info (id, customer_name, license_key, max_seats, expiry_date, modules_json, is_active)
+VALUES (1, 'Argos Enterprise Trial', 'ARGOS-TRIAL-KEY', 25, '2099-12-31', '["canvas","rag","jira","pim","schedule","audit"]', 1)
+ON CONFLICT (id) DO NOTHING;
+

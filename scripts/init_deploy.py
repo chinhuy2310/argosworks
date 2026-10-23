@@ -116,7 +116,8 @@ def prepare_env(check_only=False, rotate=False):
     }
     missing = [key for key in secret_keys if not values.get(key)]
     weak = [key for key in secret_keys if values.get(key) and _is_weak(values[key])]
-    rotate_targets = missing + (weak if (created or rotate) else [])
+    placeholders = [key for key in secret_keys if values.get(key) in PLACEHOLDER_VALUES]
+    rotate_targets = list(dict.fromkeys(missing + placeholders + (weak if (created or rotate) else [])))
 
     if check_only and rotate_targets:
         return _fail(
