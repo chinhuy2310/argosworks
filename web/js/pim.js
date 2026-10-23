@@ -1085,6 +1085,16 @@ document.addEventListener("keydown", function(e){
 
 var pimSyncLiveBtn = document.getElementById("pimSyncLiveBtn");
 
+function triggerLiveSync(){
+  if(typeof loadVision119Products === "function"){
+    var q = pimWebSearchInput ? pimWebSearchInput.value.trim() : "";
+    return loadVision119Products(currentWebCateId, q);
+  }
+}
+if(pimSyncLiveBtn){
+  pimSyncLiveBtn.addEventListener("click", triggerLiveSync);
+}
+
 function initPimTab(){
   loadPimCategories();
   loadProducts();
