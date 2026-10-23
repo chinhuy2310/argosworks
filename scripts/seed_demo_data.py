@@ -1,18 +1,17 @@
 """
-seed_demo_data.py — B2B Enterprise Sample Data Generator for ARGOS WORKS
+seed_demo_data.py — B2B Enterprise Sample Data Generator for ARGOS WORKS (Korean Native)
 
-Clears existing test/dirty records and populates realistic, production-grade
-sample data for an enterprise B2B deployment:
-- 5 Standard Departments (mgmt, dev, sales, hr, hq)
-- 8 Standard Corporate Users with realistic Vietnamese executive & staff profiles
-  (All demo users have default password: Argos@2026!)
-- Realistic Records across all Kanban workflow stages (To Do, In Progress, Review, Done)
-- Detailed Comments on tasks showing real cross-department collaboration
-- Enterprise PIM Products & Categories (Industrial IoT, Gateways, Software Licenses)
-- Schedule & Calendar events with real participant rosters
-- Lounge announcements highlighting Local-First & On-Premise security
-- Clean Audit Logs recording operational events
-- Valid Enterprise License (50 Seats, active through 2029)
+Clears existing test records and populates realistic, high-fidelity Korean
+enterprise sample data:
+- 5 Standard Korean Corporate Departments (경영지원·기획실, 소프트웨어·AI개발팀, B2B사업·고객지원팀, 인사총무·운영관리팀, 품질관리·감사준법팀)
+- 8 Standard Korean Corporate Users with realistic executive & specialist titles
+  (Password for all demo accounts: Argos@2026!)
+- Realistic Records across Kanban stages (대기, 진행, 검토, 완료)
+- Korean Collaboration Comments on tasks
+- Korean PIM Products & Categories (IoT Sensors, Gateways, Edge AI, Software Licenses)
+- Korean Schedules & Lounge Announcements
+- Clean Audit Logs in Korean
+- Valid Enterprise License (50 Seats)
 """
 
 import os
@@ -37,7 +36,7 @@ def hash_pwd(password: str):
 def run_seed():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = OFF;")  # Disable during clean reset
+    conn.execute("PRAGMA foreign_keys = OFF;")
     cur = conn.cursor()
 
     print("[1/8] Cleaning up existing transactional and test records...")
@@ -70,13 +69,13 @@ def run_seed():
         except sqlite3.OperationalError:
             pass
 
-    print("[2/8] Seeding Standard Enterprise Departments...")
+    print("[2/8] Seeding Standard Korean Enterprise Departments...")
     departments = [
-        ("mgmt", "Ban Lãnh Đạo & Điều Hành", 1, "MGMT", "MGMT", '["Chiến Lược","Kế Hoạch","Duyệt Chi","Báo Cáo"]'),
-        ("dev", "Khối Kỹ Thuật & Trí Tuệ Nhân Tạo", 2, "DEV", "ARGOS", '["Hạ Tầng","Tính Năng","Bảo Mật","Tối Ưu","API"]'),
-        ("sales", "Khối Kinh Doanh & Khách Hàng B2B", 3, "SALES", "SALES", '["Hợp Đồng","Khách Hàng","Đối Tác","Đấu Thầu"]'),
-        ("hr", "Phòng Nhân Sự & Vận Hành Doanh Nghiệp", 4, "HR", "HR", '["Tuyển Dụng","Đào Tạo","Chính Sách","Văn Hóa"]'),
-        ("hq", "Ban Kiểm Soát & Tuân Thủ Nội Bộ", 5, "HQ", "HQ", '["Kiểm Toán","Pháp Lý","SLA","Đánh Giá"]')
+        ("mgmt", "경영지원·기획실", 1, "MGMT", "MGMT", '["경영전략","예산승인","주간보고","대외협력"]'),
+        ("dev", "소프트웨어·AI개발팀", 2, "DEV", "ARGOS", '["인프라","기능개발","보안강화","성능최적화","API연동"]'),
+        ("sales", "B2B사업·고객지원팀", 3, "SALES", "SALES", '["계약체결","고객사미팅","입찰제안","기술지원"]'),
+        ("hr", "인사총무·운영관리팀", 4, "HR", "HR", '["채용","직무교육","사내복지","인프라지원"]'),
+        ("hq", "품질관리·감사준법팀", 5, "HQ", "HQ", '["내부감사","보안점검","SLA검증","인증심사"]')
     ]
     cur.executemany(
         """INSERT INTO departments (id, name, color_index, local_prefix, jira_key, custom_categories)
@@ -87,21 +86,20 @@ def run_seed():
     for d in departments:
         cur.execute("INSERT INTO card_sequences (dept_id, last_seq) VALUES (?, 100)", (d[0],))
 
-    print("[3/8] Seeding Enterprise Users (Password: Argos@2026!)...")
-    # Generate PBKDF2 hash for Argos@2026!
+    print("[3/8] Seeding Korean Enterprise Users (Password: Argos@2026!)...")
     salt_hex, hash_hex = hash_pwd("Argos@2026!")
     now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
     users_data = [
         # id, username, name, dept_id, email, is_admin, role, status
-        (1, "admin", "Nguyễn Hải Đăng", "mgmt", "dang.nguyen@argosworks.vn", 1, "admin", "active"),
-        (2, "quan.tm", "Trần Minh Quân", "dev", "quan.tran@argosworks.vn", 1, "manager", "active"),
-        (3, "nam.lh", "Lê Hoàng Nam", "dev", "nam.le@argosworks.vn", 0, "member", "active"),
-        (4, "lan.nt", "Nguyễn Thị Mai Lan", "dev", "lan.nguyen@argosworks.vn", 0, "member", "active"),
-        (5, "ha.pt", "Phạm Thu Hà", "sales", "ha.pham@argosworks.vn", 0, "manager", "active"),
-        (6, "anh.vd", "Vũ Đức Anh", "sales", "anh.vu@argosworks.vn", 0, "member", "active"),
-        (7, "linh.ht", "Hoàng Thùy Linh", "hr", "linh.hoang@argosworks.vn", 0, "manager", "active"),
-        (8, "duy.pt", "Phan Thanh Duy", "hq", "duy.phan@argosworks.vn", 0, "viewer", "active"),
+        (1, "admin", "김민수", "mgmt", "minsoo.kim@argosworks.kr", 1, "admin", "active"),
+        (2, "lee.dh", "이도현", "dev", "dohyun.lee@argosworks.kr", 1, "manager", "active"),
+        (3, "park.sj", "박서준", "dev", "seojun.park@argosworks.kr", 0, "member", "active"),
+        (4, "choi.yj", "최유진", "dev", "yujin.choi@argosworks.kr", 0, "member", "active"),
+        (5, "jung.hn", "정하나", "sales", "hana.jung@argosworks.kr", 0, "manager", "active"),
+        (6, "kang.dw", "강동원", "sales", "dongwon.kang@argosworks.kr", 0, "member", "active"),
+        (7, "han.sy", "한소영", "hr", "soyoung.han@argosworks.kr", 0, "manager", "active"),
+        (8, "yoon.jh", "윤재호", "hq", "jaeho.yoon@argosworks.kr", 0, "viewer", "active"),
     ]
 
     for u in users_data:
@@ -112,7 +110,7 @@ def run_seed():
             (u[0], u[1], u[2], u[3], u[4], salt_hex, hash_hex, PBKDF2_ROUNDS, u[5], u[6], u[7], now_iso)
         )
 
-    print("[4/8] Seeding Realistic B2B Records & Kanban Tasks...")
+    print("[4/8] Seeding Realistic Korean B2B Records & Kanban Tasks...")
     base_time = int(datetime.now().timestamp() * 1000)
     today = datetime.now()
     d_m7 = (today - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -124,45 +122,45 @@ def run_seed():
 
     records_data = [
         # (id, dept_id, category, title, project, assignee_id, assignee_name, assignee_email, start_date, due_date, status, card_code, priority, memo, jira_key)
-        (base_time + 1, "dev", "Hạ Tầng", "Triển khai cụm máy chủ On-Premise & cô lập mạng LAN an toàn",
-         "Dự Án Hạ Tầng 2026", 2, "Trần Minh Quân", "quan.tran@argosworks.vn", d_m7, d_m3, "완료", "DEV-101", "긴급",
-         "Thiết lập cụm máy chủ vật lý nội bộ chạy Linux Debian LTS, cấu hình mạng DMZ cô lập, bảo đảm 100% dữ liệu không truyền ra ngoài Internet.", "ARGOS-101"),
+        (base_time + 1, "dev", "인프라", "온프레미스 격리망 전용 서버 클러스터 구축 및 네트워크 이중화",
+         "2026 인프라 현대화", 2, "이도현", "dohyun.lee@argosworks.kr", d_m7, d_m3, "완료", "DEV-101", "긴급",
+         "사내 폐쇄망 환경에서 외부 인터넷 연결 없이 독립 구동되는 서버 랙 구성 완료 및 내부 10Gbps 백본 연동 검증 완료.", "ARGOS-101"),
 
-        (base_time + 2, "dev", "Bảo Mật", "Mã hóa AES-256 at-rest cho kho lưu trữ dữ liệu doanh nghiệp",
-         "Dự Án Hạ Tầng 2026", 3, "Lê Hoàng Nam", "nam.le@argosworks.vn", d_m3, d_p3, "진행", "DEV-102", "긴급",
-         "Kích hoạt chuẩn mã hóa cơ sở dữ liệu và phân vùng tệp đính kèm với khóa quản lý nội bộ trên thiết bị phần cứng HSM.", "ARGOS-102"),
+        (base_time + 2, "dev", "보안강화", "SQLite 및 PostgreSQL 저장소 AES-256 파일 암호화 모듈 적용",
+         "2026 인프라 현대화", 3, "박서준", "seojun.park@argosworks.kr", d_m3, d_p3, "진행", "DEV-102", "긴급",
+         "서버 재부팅 시 마스터 키 기반 하드웨어 HSM 검증 모듈 연동 및 감사 로그 위변조 방지 무결성 서명 체계 적용.", "ARGOS-102"),
 
-        (base_time + 3, "dev", "Tính Năng", "Tích hợp mô hình AI LLM nội bộ (Ollama/vLLM) phân tích tài liệu",
-         "Argos AI Assistant", 4, "Nguyễn Thị Mai Lan", "lan.nguyen@argosworks.vn", d_m3, d_p7, "진행", "DEV-103", "높음",
-         "Triển khai mô hình ngôn ngữ lớn cục bộ chạy trên máy chủ GPU nội bộ. Hỗ trợ hỏi đáp tài liệu, tóm tắt báo cáo tuần mà không cần kết nối đám mây công cộng.", "ARGOS-103"),
+        (base_time + 3, "dev", "기능개발", "로컬 사내 AI LLM 엔진(Ollama/vLLM) 문서 질의 RAG 모듈 최적화",
+         "차세대 AI 어시스턴트", 4, "최유진", "yujin.choi@argosworks.kr", d_m3, d_p7, "진행", "DEV-103", "높음",
+         "외부 클라우드 유출 없는 사내 GPU 서버 전용 파라미터 경량화(7B 모델) 연동. 초당 45 토큰 처리 확인 및 응답 지연 최소화.", "ARGOS-103"),
 
-        (base_time + 4, "dev", "API", "Đồng bộ 2 chiều Webhook trạng thái công việc với Jira Data Center On-Premise",
-         "Argos Connect & Jira", 3, "Lê Hoàng Nam", "nam.le@argosworks.vn", d_today, d_p7, "진행", "DEV-104", "높음",
-         "Hoàn thiện module webhook đồng bộ trạng thái ticket Jira với thẻ Kanban trên Argos Works theo thời gian thực.", "ARGOS-104"),
+        (base_time + 4, "dev", "API연동", "아틀라시안 Jira Data Center 온프레미스 2-way 웹훅 실시간 동기화",
+         "아르고스 커넥터", 3, "박서준", "seojun.park@argosworks.kr", d_today, d_p7, "진행", "DEV-104", "높음",
+         "사내 Jira 이슈 상태 변경 시 아르고스 칸반 카드로 0.5초 이내 양방향 미러링 검증 완료. 충돌 방지 버전 제어 로직 탑재.", "ARGOS-104"),
 
-        (base_time + 5, "sales", "Khách Hàng", "Thẩm định kiến trúc Local-First & giải pháp bảo mật cho Tập đoàn Viễn Thông X",
-         "Hợp Đồng Chiến Lược Q4", 5, "Phạm Thu Hà", "ha.pham@argosworks.vn", d_m7, d_p3, "진행", "SALES-201", "긴급",
-         "Trình bày chi tiết kiến trúc On-Premise, khả năng cách ly hoàn toàn trên mạng nội bộ và tính năng kiểm soát quyền hạn RBAC đa cấp.", "SALES-201"),
+        (base_time + 5, "sales", "고객사미팅", "(주)한국통신기술 차세대 엔터프라이즈 운영 플랫폼 PoC 결과 보고",
+         "2026 핵심 수주 프로젝트", 5, "정하나", "hana.jung@argosworks.kr", d_m7, d_p3, "진행", "SALES-201", "긴급",
+         "Local-First 폐쇄망 아키텍처 및 RBAC 다단계 권한 분리 모델 시연 완료. 고객사 보안심의 A등급 획득.", "SALES-201"),
 
-        (base_time + 6, "sales", "Đấu Thầu", "Soạn thảo hồ sơ đề xuất & bảng tính TCO bản quyền Enterprise 50 Seats",
-         "Hợp Đồng Chiến Lược Q4", 6, "Vũ Đức Anh", "anh.vu@argosworks.vn", d_today, d_p7, "검토", "SALES-202", "보통",
-         "Tổng hợp báo giá bản quyền vĩnh viễn, gói bảo trì kỹ thuật 24/7 và đào tạo chuyển giao công nghệ cho 50 người dùng.", "SALES-202"),
+        (base_time + 6, "sales", "입찰제안", "제조 대기업 대상 50 Seats 온프레미스 영구 라이선스 공급 제안서 작성",
+         "2026 핵심 수주 프로젝트", 6, "강동원", "dongwon.kang@argosworks.kr", d_today, d_p7, "검토", "SALES-202", "보통",
+         "초기 구축비용 및 24/7 기술지원 SLA를 포함한 TCO 3개년 비용 절감 분석표 작성 완료. 경영진 최종 검토 요청.", "SALES-202"),
 
-        (base_time + 7, "hr", "Tuyển Dụng", "Hoàn tất thủ tục tiếp nhận & cấp thiết bị cho 2 Kỹ sư Phần mềm mới",
-         "Vận Hành Nhân Sự Q4", 7, "Hoàng Thùy Linh", "linh.hoang@argosworks.vn", d_m7, d_m3, "완료", "HR-301", "보통",
-         "Ký kết hợp đồng lao động, bàn giao máy trạm làm việc và cấp tài khoản đăng nhập hệ thống Argos Works.", "HR-301"),
+        (base_time + 7, "hr", "채용", "2026년 하반기 핵심 임베디드 및 백엔드 개발자 2명 온보딩 절차 완료",
+         "인재영입 및 조직관리", 7, "한소영", "soyoung.han@argosworks.kr", d_m7, d_m3, "완료", "HR-301", "보통",
+         "사내 정보보호 서약서 징구, 개발 워크스테이션 지급 및 아르고스 워크스 전용 계정 권한 발급 완료.", "HR-301"),
 
-        (base_time + 8, "hr", "Đào Tạo", "Tổ chức hội thảo nội bộ: Sử dụng AI Assistant an toàn theo chuẩn bảo mật ISO 27001",
-         "Vận Hành Nhân Sự Q4", 7, "Hoàng Thùy Linh", "linh.hoang@argosworks.vn", d_today, d_p14, "대기", "HR-302", "보통",
-         "Tập huấn cho toàn bộ nhân sự các phòng ban về cách tra cứu kiến thức qua RAG nội bộ và quy định không chia sẻ tài liệu mật.", "HR-302"),
+        (base_time + 8, "hr", "직무교육", "전사 임직원 정보보호 가이드라인 및 사내 AI 비서 활용 세미나 개최",
+         "인재영입 및 조직관리", 7, "한소영", "soyoung.han@argosworks.kr", d_today, d_p14, "대기", "HR-302", "보통",
+         "외부 상용 AI 툴 보안사고 방지 및 사내 구축형 RAG 어시스턴트 활용법 전사 교육 준비.", "HR-302"),
 
-        (base_time + 9, "mgmt", "Chiến Lược", "Phê duyệt kế hoạch ngân sách mở rộng hạ tầng máy chủ AI năm 2027",
-         "Kế Hoạch Doanh Nghiệp", 1, "Nguyễn Hải Đăng", "dang.nguyen@argosworks.vn", d_m3, d_p3, "검토", "MGMT-401", "높음",
-         "Xem xét tờ trình của Khối Kỹ Thuật về việc đầu tư bổ sung 2 node máy chủ chuyên dụng phục vụ mô hình ngôn ngữ lớn cục bộ.", "MGMT-401"),
+        (base_time + 9, "mgmt", "경영전략", "2027년도 온프레미스 AI 전용 컴퓨팅 인프라 확장 예산안 승인",
+         "중장기 사업계획", 1, "김민수", "minsoo.kim@argosworks.kr", d_m3, d_p3, "검토", "MGMT-401", "높음",
+         "고성능 GPU 연산 서버 2노드 추가 도입에 대한 경제성 및 투자 대비 효과(ROI) 최종 심의 및 결재.", "MGMT-401"),
 
-        (base_time + 10, "hq", "Kiểm Toán", "Rà soát nhật ký Audit Log & đánh giá tuân thủ phân quyền người dùng",
-         "Kiểm Soát Nội Bộ", 8, "Phan Thanh Duy", "duy.phan@argosworks.vn", d_m3, d_p7, "진행", "HQ-501", "높음",
-         "Kiểm tra tính toàn vẹn của chuỗi sự kiện kiểm toán, bảo đảm mọi thao tác sửa đổi dữ liệu quan trọng đều được ghi nhận minh bạch.", "HQ-501")
+        (base_time + 10, "hq", "내부감사", "전사 4단계 권한 매트릭스(RBAC) 및 보안 감사 로그 무결성 전수 점검",
+         "상시 내부통제", 8, "윤재호", "jaeho.yoon@argosworks.kr", d_m3, d_p7, "진행", "HQ-501", "높음",
+         "최근 10,000건의 사용자 접속 및 데이터 변경 감사 로그 전수 검증 결과 위변조 없음 확인.", "HQ-501")
     ]
 
     for r in records_data:
@@ -171,7 +169,7 @@ def run_seed():
                                     assignee_email, start_date, due_date, work_date, summary, tags, memo,
                                     status, priority, card_code, participants, parent_key, is_scheduled,
                                     version, is_private, updated_at, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '["Enterprise","B2B"]', ?, ?, ?, ?, '', '', 1, 1, 0, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '["엔터프라이즈","온프레미스","B2B"]', ?, ?, ?, ?, '', '', 1, 1, 0, ?, ?)""",
             (r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], f"{r[8]} ~ {r[9]}", r[3],
              r[13], r[10], r[12], r[11], now_iso, now_iso)
         )
@@ -179,18 +177,18 @@ def run_seed():
             """INSERT INTO record_jira (record_id, jira_key, jira_status, jira_url)
                VALUES (?, ?, ?, ?)""",
             (r[0], r[14], "IN_PROGRESS" if r[10] == "진행" else ("DONE" if r[10] == "완료" else "TO_DO"),
-             f"https://jira.internal.argosworks.vn/browse/{r[14]}")
+             f"https://jira.internal.argosworks.kr/browse/{r[14]}")
         )
 
-    print("[5/8] Seeding Professional Task Comments...")
+    print("[5/8] Seeding Professional Korean Task Comments...")
     comments_data = [
-        (base_time + 1, "Trần Minh Quân", "Cụm máy chủ đã nghiệm thu phần cứng, đo kiểm băng thông LAN đạt 10Gbps ổn định.", now_iso),
-        (base_time + 2, "Lê Hoàng Nam", "Đã cấu hình master key tại /etc/argos/security/master.key với quyền đọc 600, chỉ daemon root có quyền truy cập.", now_iso),
-        (base_time + 3, "Nguyễn Thị Mai Lan", "Mô hình LLM 7B cục bộ chạy với vLLM đạt tốc độ phản hồi 45 tokens/giây, không tiêu tốn băng thông Internet.", now_iso),
-        (base_time + 4, "Trần Minh Quân", "Cần bổ sung HMAC-SHA256 signature verification trên endpoint tiếp nhận webhook từ Jira.", now_iso),
-        (base_time + 5, "Phạm Thu Hà", "Khách hàng rất hài lòng với mô hình Local-First, vì hoàn toàn giải quyết được lo ngại về an toàn thông tin của ban giám đốc họ.", now_iso),
-        (base_time + 9, "Nguyễn Hải Đăng", "Đồng ý chủ trương phê duyệt. Phòng Tài chính chuẩn bị hợp đồng mua sắm theo đúng định mức.", now_iso),
-        (base_time + 10, "Phan Thanh Duy", "Qua kiểm tra đối chiếu 1,000 bản ghi audit log gần nhất, toàn bộ thao tác đều khớp với tài khoản người dùng tương ứng.", now_iso)
+        (base_time + 1, "이도현", "서버 랙 구축 및 방화벽 DMZ 분리 설정 완료되었습니다. 로컬 네트워크 지연시간 0.3ms 이하로 매우 안정적입니다.", now_iso),
+        (base_time + 2, "박서준", "데이터베이스 마스터 키는 /etc/argos/security/master.key 권한 600으로 안전하게 보관되었습니다.", now_iso),
+        (base_time + 3, "최유진", "사내 RAG 벡터 인덱싱 완료 후 기술 매뉴얼 질의 정확도 96% 달성했습니다. 외부 통신 전혀 발생하지 않습니다.", now_iso),
+        (base_time + 4, "박서준", "Jira Data Center 웹훅 수신 엔드포인트에 HMAC-SHA256 서명 검증 로직이 추가되었습니다.", now_iso),
+        (base_time + 5, "정하나", "고객사 CISO 인터뷰에서 클라우드 SaaS 대비 데이터 유출 위험이 제로라는 점에 대해 최고점을 받았습니다.", now_iso),
+        (base_time + 9, "김민수", "예산안 검토 완료되었습니다. 재무기획팀과 협의하여 다음 주 집행 일정 확정하겠습니다.", now_iso),
+        (base_time + 10, "윤재호", "감사 로그 전수 점검 결과, 인가되지 않은 권한 상승 시도 0건이며 무결성이 완벽히 유지되고 있습니다.", now_iso)
     ]
     for c in comments_data:
         cur.execute(
@@ -199,40 +197,40 @@ def run_seed():
             c
         )
 
-    print("[6/8] Seeding Enterprise PIM Products & Categories...")
+    print("[6/8] Seeding Korean Enterprise PIM Products & Categories...")
     categories = [
-        ("cat-iot", "Hệ Thống IoT & Cảm Biến Công Nghiệp", '[{"name":"Giao thức","type":"select","options":["RS485","Modbus","Ethernet"]},{"name":"Cấp bảo vệ","type":"text"}]'),
-        ("cat-gw", "Thiết Bị Cổng Kết Nối Biên (Edge Gateway)", '[{"name":"Số cổng LAN","type":"number"},{"name":"Nguồn cấp","type":"text"}]'),
-        ("cat-lic", "Bản Quyền Phần Mềm On-Premise", '[{"name":"Số lượng Seats","type":"number"},{"name":"Thời hạn","type":"text"}]'),
-        ("cat-ai", "Thiết Bị Xử Lý Trí Tuệ Nhân Tạo Biên", '[{"name":"Công suất tính toán","type":"text"},{"name":"NPU TOPS","type":"number"}]')
+        ("cat-iot", "산업용 IoT 센서 및 계측 시스템", '[{"name":"통신 프로토콜","type":"select","options":["RS485","Modbus","Ethernet"]},{"name":"방수방진 등급","type":"text"}]'),
+        ("cat-gw", "산업용 엣지 게이트웨이 (Edge Gateway)", '[{"name":"LAN 포트 수","type":"number"},{"name":"전원 공급","type":"text"}]'),
+        ("cat-ai", "온프레미스 엣지 AI 비전 분석 모듈", '[{"name":"연산 능력","type":"text"},{"name":"NPU 성능","type":"text"}]'),
+        ("cat-lic", "아르고스 워크스 구축형 엔터프라이즈 라이선스", '[{"name":"사용자 수","type":"number"},{"name":"유지보수 기간","type":"text"}]')
     ]
     cur.executemany("INSERT INTO product_categories (id, name, spec_template, created_at) VALUES (?, ?, ?, ?)",
                     [(c[0], c[1], c[2], now_iso) for c in categories])
 
     products_data = [
-        ("ARGOS-IOT-S300", "ARGOS-IOT-S300", "Cảm Biến Giám Sát Nhiệt Độ & Rung Chấn Công Nghiệp S300", "Họ Cảm Biến S-Series",
-         "판매 중", "Hệ Thống IoT & Cảm Biến Công Nghiệp", "Cảm biến công nghiệp đạt chuẩn IP68 đo nhiệt độ và rung chấn máy móc",
-         "Giao thức Modbus RTU / RS485, dải nhiệt độ -40°C đến 125°C",
-         '{"Giao thức":"Modbus-RTU","Cấp bảo vệ":"IP68","Dải đo":"-40°C đến 125°C"}',
-         8500000, "VND", "internal"),
+        ("ARGOS-IOT-S300", "ARGOS-IOT-S300", "아르고스 S300 산업용 진동·온도 복합 센서", "S-시리즈 산업용 센서",
+         "판매 중", "산업용 IoT 센서 및 계측 시스템", "IP68 방수방진 지원 고정밀 진동 및 온도 모니터링 복합 계측 센서",
+         "Modbus-RTU / RS485 지원, 측정 온도 범위 -40℃ ~ 125℃",
+         '{"통신 프로토콜":"Modbus-RTU","방수방진 등급":"IP68","측정 범위":"-40℃ ~ 125℃"}',
+         850000, "KRW", "internal"),
 
-        ("ARGOS-GW-EDGE2", "ARGOS-GW-EDGE2", "Bộ Cổng Gateway Công Nghiệp 4 Cổng Cách Ly Quang Edge-V2", "Họ Gateway Edge",
-         "판매 중", "Thiết Bị Cổng Kết Nối Biên (Edge Gateway)", "Gateway truyền thông công nghiệp hỗ trợ mạng kép LAN/WAN cách ly",
-         "Nguồn đôi dự phòng 12-24V DC, vỏ nhôm công nghiệp tản nhiệt tự nhiên",
-         '{"Số cổng LAN":4,"Nguồn cấp":"12-24V DC","Vỏ máy":"Nhôm nguyên khối"}',
-         16800000, "VND", "internal"),
+        ("ARGOS-GW-EDGE2", "ARGOS-GW-EDGE2", "아르고스 Edge-V2 4포트 광절연 산업용 게이트웨이", "Edge 게이트웨이 제품군",
+         "판매 중", "산업용 엣지 게이트웨이 (Edge Gateway)", "이중화 LAN 및 하드웨어 광절연 설계를 적용한 산업용 통신 게이트웨이",
+         "이중 전원 12-24V DC 지원, 알루미늄 일체형 무팬 방열 구조",
+         '{"LAN 포트 수":4,"전원 공급":"DC 12-24V 이중화","케이스":"알루미늄 압출 방열"}',
+         1680000, "KRW", "internal"),
 
-        ("ARGOS-AI-BOX1", "ARGOS-AI-BOX1", "Thiết Bị Phân Tích AI Biên Công Nghiệp Argos Vision Box", "Họ AI Vision",
-         "판매 중", "Thiết Bị Xử Lý Trí Tuệ Nhân Tạo Biên", "Thiết bị biên xử lý thị giác máy tính và phân tích dữ liệu cảm biến thời gian thực",
-         "32 TOPS NPU, RAM 16GB ECC, hỗ trợ chuẩn ONNX và TensorRT",
-         '{"Công suất tính toán":"32 TOPS","Bộ nhớ":"16GB ECC","HĐH":"Argos Linux Core"}',
-         32500000, "VND", "internal"),
+        ("ARGOS-AI-BOX1", "ARGOS-AI-BOX1", "아르고스 Vision-Box 엣지 AI 추론 연산 장치", "Vision AI 장치군",
+         "판매 중", "온프레미스 엣지 AI 비전 분석 모듈", "실시간 비전 분석 및 센서 스트림 데이터 로컬 추론을 위한 독립형 엣지 컴퓨터",
+         "32 TOPS NPU 탑재, 16GB LPDDR5 ECC 메모리, Argos Linux Core OS 탑재",
+         '{"연산 능력":"32 TOPS","메모리":"16GB ECC","운영체제":"Argos Linux Core"}',
+         3250000, "KRW", "internal"),
 
-        ("ARGOS-LIC-ENT50", "ARGOS-LIC-ENT50", "Gói Bản Quyền Nền Tảng Argos Works Enterprise (50 Seats On-Premise)", "Phần Mềm Quản Trị",
-         "판매 중", "Bản Quyền Phần Mềm On-Premise", "Bản quyền vĩnh viễn hệ điều hành vận hành Argos Works dành cho 50 người dùng",
-         "Bao gồm phân hệ Canvas, PIM, RAG AI, Jira Sync và Audit Log tuân thủ ISO",
-         '{"Số lượng Seats":50,"Thời hạn":"Vĩnh viễn","Hỗ trợ kỹ thuật":"12 tháng"}',
-         150000000, "VND", "internal")
+        ("ARGOS-LIC-ENT50", "ARGOS-LIC-ENT50", "ARGOS WORKS Enterprise 구축형 영구 라이선스 (50인)", "소프트웨어 솔루션",
+         "판매 중", "아르고스 워크스 구축형 엔터프라이즈 라이선스", "사내 폐쇄망 구축형 올인원 업무 포털 영구 라이선스 (50인 사용자 기본 제공)",
+         "칸반 보드, PIM 제품 관리, 사내 AI RAG 비서, Jira 2-way 연동 및 보안 감사 로그 포함",
+         '{"사용자 수":50,"유지보수 기간":"1년 무상 (이후 연간 유지보수 계약)","제공 형태":"구축형 패키지"}',
+         15000000, "KRW", "internal")
     ]
     cur.executemany(
         """INSERT INTO products (id, model, display_name, family, lifecycle, category, summary, memo, specs, price, currency, revision, created_at, updated_at, source)
@@ -240,17 +238,17 @@ def run_seed():
         [(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], now_iso, now_iso, p[11]) for p in products_data]
     )
 
-    print("[7/8] Seeding Corporate Schedules & Lounge Announcements...")
+    print("[7/8] Seeding Korean Corporate Schedules & Lounge Announcements...")
     schedules = [
-        (base_time + 101, 1, "Nguyễn Hải Đăng", "mgmt", "dang.nguyen@argosworks.vn", "meeting",
-         "Họp Giao Ban Điều Hành Tuần Mới (Executive Weekly Sync)",
-         f"{d_today} 09:00", f"{d_today} 10:30", "Đánh giá tiến độ dự án trọng điểm và chỉ số vận hành các khối phòng ban."),
-        (base_time + 102, 2, "Trần Minh Quân", "dev", "quan.tran@argosworks.vn", "sprint",
-         "Sprint Review: Kiểm Thử Đồng Bộ Jira On-Premise & Mô Hình AI Cục Bộ",
-         f"{d_p3} 14:00", f"{d_p3} 15:30", "Trình chiếu tính năng webhook 2 chiều với Jira và tốc độ phân tích RAG nội bộ."),
-        (base_time + 103, 5, "Phạm Thu Hà", "sales", "ha.pham@argosworks.vn", "client",
-         "Phiên Thuyết Trình Giải Pháp Local-First Cho Khách Hàng Doanh Nghiệp",
-         f"{d_p7} 10:00", f"{d_p7} 11:30", "Demo kiến trúc bảo mật cách ly mạng LAN và cơ chế phân quyền RBAC 4 cấp.")
+        (base_time + 101, 1, "김민수", "mgmt", "minsoo.kim@argosworks.kr", "meeting",
+         "주간 정례 경영전략 및 부서장 회의",
+         f"{d_today} 09:00", f"{d_today} 10:30", "전사 핵심 프로젝트 진척률 점검, 분기 예산 집행 현황 및 전략 과제 승인."),
+        (base_time + 102, 2, "이도현", "dev", "dohyun.lee@argosworks.kr", "sprint",
+         "Jira Data Center 연동 및 로컬 AI 엔진 스프린트 리뷰",
+         f"{d_p3} 14:00", f"{d_p3} 15:30", "Jira 온프레미스 실시간 웹훅 연동 결과 시연 및 사내 RAG 문서 질의 응답 속도 검증."),
+        (base_time + 103, 5, "정하나", "sales", "hana.jung@argosworks.kr", "client",
+         "엔터프라이즈 B2B Local-First 솔루션 데모 시연회",
+         f"{d_p7} 10:00", f"{d_p7} 11:30", "대기업 고객사 대상 폐쇄망 독립 운영 구조 및 RBAC 4단계 권한 제어 모델 현장 시연.")
     ]
     cur.executemany(
         """INSERT INTO schedule_events (id, owner_id, owner_name, owner_dept_id, owner_email, type, title, start_date, end_date, memo, created_at)
@@ -265,12 +263,12 @@ def run_seed():
         )
 
     lounge_msgs = [
-        (base_time + 201, "general", "Nguyễn Hải Đăng", "mgmt", "Tất cả thành viên", "all",
-         "Chào mừng toàn thể đội ngũ đến với nền tảng điều hành Argos Works phiên bản 2026. Chúc mọi người một tuần làm việc hiệu quả và bứt phá!", now_iso),
-        (base_time + 202, "general", "Trần Minh Quân", "dev", "Tất cả thành viên", "all",
-         "Thông báo bảo mật: Cụm máy chủ On-Premise và dịch vụ AI nội bộ đang hoạt động ở trạng thái tối ưu nhất. Toàn bộ tài liệu doanh nghiệp được mã hóa an toàn trong mạng nội bộ.", now_iso),
-        (base_time + 203, "general", "Phạm Thu Hà", "sales", "Tất cả thành viên", "all",
-         "Tin vui: Đối tác khách hàng B2B đánh giá rất cao giao diện trực quan và tính năng đồng bộ 2 chiều với Jira trong buổi làm việc sáng nay.", now_iso)
+        (base_time + 201, "general", "김민수", "mgmt", "전체 임직원", "all",
+         "2026년도 하반기 ARGOS WORKS 온프레미스 플랫폼이 정식 배포되었습니다. 임직원 여러분 모두 안전하고 생산적인 한 주 되시길 바랍니다.", now_iso),
+        (base_time + 202, "general", "이도현", "dev", "전체 임직원", "all",
+         "보안 공지: 사내 모든 연구 데이터와 작업 카드는 온프레미스 격리망 내에 안전하게 암호화되어 보관됩니다. 외부 유출 위험 없이 안심하고 활용하세요.", now_iso),
+        (base_time + 203, "general", "정하나", "sales", "전체 임직원", "all",
+         "영업 브리핑: 금일 대기업 고객사 미팅에서 Jira 2-way 연동과 로컬 비서 기능에 대해 최고 수준의 호평을 받았습니다.", now_iso)
     ]
     cur.executemany(
         """INSERT INTO lounge_messages (id, conversation_key, from_name, from_dept_id, to_name, to_dept_id, text, created_at)
@@ -281,14 +279,14 @@ def run_seed():
     print("[8/8] Seeding Enterprise License & Initial Audit Logs...")
     cur.execute(
         """INSERT INTO license_info (id, customer_name, license_key, max_seats, expiry_date, modules_json, is_active, updated_at)
-           VALUES (1, 'Argos Enterprise Solutions Corp', 'ARGOS-ENT-2026-LOCAL-B2B', 50, '2029-12-31',
+           VALUES (1, '주식회사 아르고스 솔루션즈', 'ARGOS-KOREA-ENT-2026-LOCAL', 50, '2029-12-31',
                    '[\"canvas\",\"rag\",\"jira\",\"pim\",\"schedule\",\"audit\"]', 1, ?)""",
         (now_iso,)
     )
 
     audit_logs = [
-        (now_iso, "system", "SYSTEM_BOOTSTRAP", "database", "1", '{"action":"clean_seed","architecture":"local_first_b2b"}'),
-        (now_iso, "admin", "LICENSE_ACTIVATED", "license", "1", '{"seats":50,"type":"enterprise_local"}'),
+        (now_iso, "system", "SYSTEM_BOOTSTRAP", "database", "1", '{"action":"clean_seed","architecture":"korean_local_first_b2b"}'),
+        (now_iso, "admin", "LICENSE_ACTIVATED", "license", "1", '{"seats":50,"type":"enterprise_local","customer":"(주)아르고스 솔루션즈"}'),
         (now_iso, "admin", "ORGANIZATION_SETUP", "departments", "5", '{"departments":["mgmt","dev","sales","hr","hq"]}'),
         (now_iso, "admin", "USER_MANAGEMENT", "users", "8", '{"status":"active","roles":["admin","manager","member","viewer"]}')
     ]
@@ -301,7 +299,7 @@ def run_seed():
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.commit()
     conn.close()
-    print(">>> Seed completed successfully! All enterprise sample data is ready.")
+    print(">>> Korean enterprise sample data seed completed successfully!")
 
 
 if __name__ == "__main__":
