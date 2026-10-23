@@ -476,6 +476,111 @@ def can_modify_record(user_or_session, record):
 
     return False
 
+def can_delete_record(user_or_session, record):
+    """
+    레코드 삭제 권한 판정 (기업 거버넌스 엄격 적용 - Phương án A):
+    - admin: 전체 레코드 삭제 가능
+    - manager: 자기 부서 레코드만 삭제 가능
+    - member / viewer: 삭제 절대 불가 (403 차단)
+    """
+    if not user_or_session:
+        return False
+    role = get_user_role(user_or_session)
+    if role == "admin":
+        return True
+    if role == "manager":
+        u_dept = (user_or_session.get("org") or user_or_session.get("dept_id") or "").strip().lower()
+        rec_dept = (record.get("dept_id") or record.get("org") or "").strip().lower()
+        if u_dept and rec_dept and u_dept == rec_dept:
+            return True
+    return False
+
+
+def can_transition_status(user_or_session, record, target_status):
+    """
+    상태 전이 권한 검증:
+    - viewer는 어떠한 상태 변경도 불가
+    - admin은 모든 상태로 변경 가능 (완료 포함)
+    - manager는 자기 부서 레코드에 대해 모든 상태로 변경 가능 (완료 포함)
+    - member는 '검토'(Review)까지만 변경 가능하며, '완료'(Done/Closed/Resolved)는 관리자만 가능
+    """
+    if not user_or_session:
+        return False, "인증 세션이 없습니다."
+
+    if not can_modify_record(user_or_session, record):
+        return False, "해당 업무 카드의 상태를 변경할 권한이 없습니다."
+
+    role = get_user_role(user_or_session)
+    clean_target = (target_status or "").strip().lower()
+    is_done = clean_target in ("완료", "done", "closed", "resolved", "완료됨")
+
+    if is_done:
+        if role == "admin":
+            return True, ""
+        if role == "manager":
+            u_dept = (user_or_session.get("org") or user_or_session.get("dept_id") or "").strip().lower()
+            rec_dept = (record.get("dept_id") or record.get("org") or "").strip().lower()
+            if u_dept and rec_dept and u_dept == rec_dept:
+                return True, ""
+            return False, "타 부서의 작업 카드는 해당 부서 관리자 또는 시스템 관리자만 완료할 수 있습니다."
+        return False, "일반 사용자는 '완료' 상태로 직접 변경할 수 없습니다. '검토' 상태로 변경하여 관리자 승인을 요청해 주세요."
+
+    return True, ""
+
+def is_viewer(user_or_session):
+    """Viewer là role chỉ đọc: không được thực hiện bất kỳ thay đổi dữ liệu nào."""
+    return bool(user_or_session) and get_user_role(user_or_session) == "viewer"
+
+
+def can_write_data(user_or_session):
+    """Mọi thao tác ghi dữ liệu yêu cầu user đã đăng nhập và KHÔNG phải viewer."""
+    if not user_or_session:
+        return False
+    return get_user_role(user_or_session) != "viewer"
+
+
+def check_record_write_access(user_or_session, record):
+    """
+    Kiểm tra quyền ghi trên MỘT record cụ thể.
+    Dùng chung cho các endpoint từng thiếu kiểm tra (assign/unassign lịch,
+    upload attachment, push Jira) để tránh lặp lại lỗi "quên check".
+    Trả về (ok, error_message).
+    """
+    if not user_or_session:
+        return False, "인증 세션이 필요합니다."
+    if not can_write_data(user_or_session):
+        return False, "조회 전용(Viewer) 권한의 사용자는 데이터를 변경할 수 없습니다."
+    if not can_modify_record(user_or_session, record):
+        return False, "해당 업무 카드를 변경할 권한이 없습니다."
+    return True, ""
+
+
+def user_can_access_notification(user_or_session, notification):
+    """Notification có thuộc về user hiện tại không (chống IDOR)."""
+    if not user_or_session or not notification:
+        return False
+    from utils.text import assignee_base_name
+
+    email = (user_or_session.get("email") or "").strip().lower()
+    name = (user_or_session.get("name") or "").strip()
+    base = assignee_base_name(name) if name else ""
+    r_email = (notification.get("recipient_email") or "").strip().lower()
+    r_name = (notification.get("recipient_name") or "").strip()
+
+    # Thông báo broadcast cho toàn hệ thống
+    if r_email == "all" or (r_email == "" and r_name in ("", "all")):
+        return True
+    if email and r_email == email:
+        return True
+    if name and r_name == name:
+        return True
+    if base and r_name == base:
+        return True
+    if is_admin_user(user_or_session) and r_name in ("관리자", "admin"):
+        return True
+    return False
+
+
 def visible_records(session, records=None):
     """
     단일 권한 진실의 원천 (Single Source of Truth).

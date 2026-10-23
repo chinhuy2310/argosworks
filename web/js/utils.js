@@ -52,6 +52,39 @@ var el = {
   syncCaption: document.getElementById("syncCaption")
 };
 
+// ---- Role helpers (dung chung cho moi module UI) ----
+function getSessionRole(){
+  var u = null;
+  try {
+    if (typeof window.getCurrentUser === "function") u = window.getCurrentUser();
+    if (!u) {
+      var raw = sessionStorage.getItem("argosUser") || localStorage.getItem("argosUser");
+      if (raw) u = JSON.parse(raw);
+    }
+  } catch(e){}
+  if (!u) return "";
+  if (u.role) return u.role;
+  return (u.isAdmin || u.is_admin) ? "admin" : "member";
+}
+
+function isViewerUser(){
+  return getSessionRole() === "viewer";
+}
+
+function canModifyPimUser(){
+  var role = getSessionRole();
+  if (role === "admin") return true;
+  if (role !== "manager") return false;
+  var u = null;
+  try { u = (typeof window.getCurrentUser === "function") ? window.getCurrentUser() : null; } catch(e){}
+  var dept = String((u && (u.org || u.dept_id)) || "").toLowerCase();
+  return ["sales", "biz", "exec", "management", "경영", "영업"].indexOf(dept) !== -1;
+}
+
+window.getSessionRole = getSessionRole;
+window.isViewerUser = isViewerUser;
+window.canModifyPimUser = canModifyPimUser;
+
 var CATEGORIES_BY_DEPT = {};
 var selectedFiles = [];
 var deptAddOpen = false;
@@ -138,3 +171,16 @@ function showToast(msg, duration, isError){
     }
   }, duration || 3200);
 }
+
+window.updatePrioritySelectColor = function(selectEl){
+  if(!selectEl) return;
+  var colors = {
+    "낮음": "#22c55e",
+    "보통": "#eab308",
+    "높음": "#f97316",
+    "긴급": "#ef4444"
+  };
+  var val = (selectEl.value || "보통").trim();
+  selectEl.style.color = colors[val] || "#eab308";
+  selectEl.style.fontWeight = "600";
+};

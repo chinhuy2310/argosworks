@@ -86,6 +86,10 @@ def update_department(dept_id, name, local_prefix="", jira_key="", custom_catego
 
 def delete_department(dept_id):
     """부서를 삭제한다. 레코드나 사용자가 참조하고 있으면 삭제 불가."""
+    if not dept_id:
+        return False, "부서 ID가 필요합니다."
+    if not get_one("SELECT id FROM departments WHERE id = ?", (dept_id,)):
+        return False, "부서를 찾을 수 없습니다."
     users = query("SELECT count(*) as c FROM users WHERE dept_id = ?", (dept_id,))
     recs = query("SELECT count(*) as c FROM records WHERE dept_id = ?", (dept_id,))
     user_cnt = users[0]["c"] if users else 0
@@ -126,6 +130,7 @@ def read_records():
             "tags": json.loads(r["tags"]) if r["tags"] else [],
             "memo": r["memo"],
             "status": r.get("status") or "진행",
+            "priority": r.get("priority") or "보통",
             "cardCode": r.get("card_code") or (r.get("jira_key") or f"#{r['id']}"),
             "participants": r.get("participants") or "",
             "parentKey": r.get("parent_key") or "",
@@ -175,6 +180,7 @@ def get_record_by_id(record_id):
         "tags": json.loads(r["tags"]) if r["tags"] else [],
         "memo": r["memo"],
         "status": r.get("status") or "진행",
+        "priority": r.get("priority") or "보통",
         "cardCode": r.get("card_code") or (r.get("jira_key") or f"#{r['id']}"),
         "participants": r.get("participants") or "",
         "parentKey": r.get("parent_key") or "",
@@ -245,6 +251,7 @@ def find_record_by_key_or_code(key_or_code):
         "tags": json.loads(r["tags"]) if r["tags"] else [],
         "memo": r["memo"],
         "status": r.get("status") or "진행",
+        "priority": r.get("priority") or "보통",
         "cardCode": r.get("card_code") or (r.get("jira_key") or f"#{r['id']}"),
         "participants": r.get("participants") or "",
         "parentKey": r.get("parent_key") or "",
@@ -398,10 +405,14 @@ def append_record(record):
 
     is_sched = 1 if record.get("is_scheduled", True) else 0
 
+    priority = (record.get("priority") or "보통").strip()
+    if priority not in ("낮음", "보통", "높음", "긴급"):
+        priority = "보통"
+
     execute(
         """INSERT INTO records(id, dept_id, category, title, project,
-           assignee_name, assignee_email, start_date, due_date, work_date, summary, tags, memo, status, card_code, participants, parent_key, is_scheduled)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           assignee_name, assignee_email, start_date, due_date, work_date, summary, tags, memo, status, priority, card_code, participants, parent_key, is_scheduled)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             rec_id,
             record.get("org", ""),
@@ -417,6 +428,7 @@ def append_record(record):
             tags_json,
             record.get("memo", ""),
             status,
+            priority,
             card_code,
             participants,
             parent_key,
@@ -912,7 +924,10 @@ def set_record_schedule_visibility(record_id_or_code, is_scheduled=True):
     return r_id, jira_key
 
 
-def update_record_details(record_id_or_code, title=None, memo=None, assignee_name=None, assignee_email=None, participants=None, due_date=None, start_date=None, expected_version=None):
+_UNSET = object()
+
+
+def update_record_details(record_id_or_code, title=None, memo=None, assignee_name=None, assignee_email=None, participants=None, due_date=None, start_date=None, expected_version=None, parent_key=_UNSET, priority=None):
     """업무 기록의 제목, 상세 내용(메모), 담당자, 참여자, 시작일/마감일을 포괄적으로 수정한다.
     Optimistic Locking (낙관적 락): expected_version이 지정된 경우 DB의 현재 버전과 일치하는지 검증한다."""
     if not record_id_or_code:
@@ -977,6 +992,40 @@ def update_record_details(record_id_or_code, title=None, memo=None, assignee_nam
         w_date = f"{s_date} ~ {d_date}" if (s_date and d_date and s_date != d_date) else s_date
         updates.extend(["start_date = ?", "due_date = ?", "work_date = ?"])
         params.extend([s_date, d_date, w_date])
+
+    if priority is not None and str(priority).strip():
+        p_val = str(priority).strip()
+        if p_val in ("낮음", "보통", "높음", "긴급"):
+            updates.append("priority = ?")
+            params.append(p_val)
+
+    if parent_key is not _UNSET:
+        p_val = str(parent_key or "").strip().upper()
+        if p_val:
+            rec_id_str = str(rec.get("id"))
+            rec_code = str(rec.get("cardCode") or "").upper().lstrip("#")
+            clean_target = p_val.lstrip("#").replace("REC-", "")
+            if clean_target == rec_id_str or (rec_code and clean_target == rec_code):
+                return None, "카드는 자기 자신을 상위 작업으로 지정할 수 없습니다."
+            curr = find_record_by_key_or_code(p_val)
+            visited = set()
+            while curr:
+                c_id = str(curr.get("id"))
+                c_code = str(curr.get("cardCode") or "").upper().lstrip("#")
+                if c_id in visited:
+                    break
+                visited.add(c_id)
+                if c_id == rec_id_str or (rec_code and c_code == rec_code):
+                    return None, "순환 참조(Circular Reference) 오류: 하위 작업을 상위 작업으로 지정할 수 없습니다."
+                next_pk = (curr.get("parentKey") or curr.get("parent_key") or "").strip()
+                if not next_pk:
+                    break
+                curr = find_record_by_key_or_code(next_pk)
+
+            updates.append("parent_key = ?")
+            params.append(p_val)
+        else:
+            updates.append("parent_key = ''")
 
     # 항상 version 1 증가 및 updated_at 타임스탬프 갱신
     now_iso = datetime.now().isoformat()

@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS records (
     tags TEXT NOT NULL DEFAULT '[]',
     memo TEXT NOT NULL DEFAULT '',
     status VARCHAR(64) NOT NULL DEFAULT '진행',
+    priority VARCHAR(64) NOT NULL DEFAULT '보통',
     card_code VARCHAR(64) NOT NULL DEFAULT '',
     participants TEXT NOT NULL DEFAULT '',
     parent_key VARCHAR(64) NOT NULL DEFAULT '',

@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS records (
     tags TEXT NOT NULL DEFAULT '[]',  -- JSON array
     memo TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT '진행',
+    priority TEXT NOT NULL DEFAULT '보통',
     card_code TEXT NOT NULL DEFAULT '',
     participants TEXT NOT NULL DEFAULT '',
     parent_key TEXT NOT NULL DEFAULT '',

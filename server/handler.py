@@ -132,7 +132,8 @@ class ArgosHandler(BaseHTTPRequestHandler):
         proto = (self.headers.get("X-Forwarded-Proto") or "").lower()
         if proto == "https":
             return True
-        if hasattr(self.connection, "getpeercert"):
+        conn = getattr(self, "connection", None)
+        if conn and hasattr(conn, "getpeercert"):
             return True
         return False
 

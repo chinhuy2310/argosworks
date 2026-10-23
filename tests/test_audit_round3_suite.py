@@ -248,6 +248,29 @@ class TestAuditRound3Suite(unittest.TestCase):
         self.assertEqual(match_get("/api/account/logout")[0], "notfound")
         self.assertEqual(match_get("/api/auth/logout")[0], "notfound")
 
+    def test_update_record_parent_key_and_cycle_prevention(self):
+        """상위 작업(parentKey) 변경 및 순환 참조 방지 로직 검증."""
+        from services.data_store import update_record_details
+        execute("INSERT OR REPLACE INTO records (id, dept_id, category, title, project, assignee_name, card_code, parent_key) VALUES (911001, 'dev', '개발', 'DEV-1 Title', 'P', 'Mem', 'DEV-1', '')")
+        execute("INSERT OR REPLACE INTO records (id, dept_id, category, title, project, assignee_name, card_code, parent_key) VALUES (911002, 'sales', '영업', 'SALES-3 Title', 'P', 'Mem', 'SALES-3', 'DEV-1')")
+        # 1. 자기 자신을 상위 작업으로 지정 시 차단
+        _, err_self = update_record_details("DEV-1", parent_key="DEV-1")
+        self.assertIn("자기 자신", err_self)
+
+        # 2. 하위 작업(SALES-3)을 상위 작업(DEV-1)의 부모로 지정 시 순환 참조 차단
+        _, err_cycle = update_record_details("DEV-1", parent_key="SALES-3")
+        self.assertIn("순환 참조", err_cycle)
+
+        # 3. 상위 작업 해제 (최상위 작업으로 변경)
+        rec_unlinked, err_un = update_record_details("SALES-3", parent_key="")
+        self.assertEqual(err_un, "")
+        self.assertEqual(rec_unlinked["parentKey"], "")
+
+        # 4. 상위 작업 재지정 (DEV-1로 재연결)
+        rec_relinked, err_re = update_record_details("SALES-3", parent_key="DEV-1")
+        self.assertEqual(err_re, "")
+        self.assertEqual(rec_relinked["parentKey"], "DEV-1")
+
 
 if __name__ == "__main__":
     unittest.main()

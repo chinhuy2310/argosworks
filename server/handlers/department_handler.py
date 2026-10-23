@@ -2,19 +2,20 @@ import json
 import re
 import time
 from services.data_store import read_departments, write_departments, update_department, delete_department, _save_lock
-from services.auth import is_admin_user, is_manager_or_admin
+from services.auth import is_admin_user
 from utils.logging import access_log
 
-def _require_dept_admin(handler, ip, action_name):
+def _require_system_admin(handler, ip, action_name):
+    """Quản lý cơ cấu tổ chức (phòng ban) là quyền của System Admin."""
     session = handler._get_session_or_401()
     if session is None:
         return None
-    if not is_manager_or_admin(session):
+    if not is_admin_user(session):
         user_desc = f"{session.get('name')}|{session.get('email')}"
         access_log(ip, f"forbidden_{action_name}", 403, user_desc)
         handler._send_json(403, {
             "ok": False,
-            "error": "관리자(Admin) 또는 부서장(Manager) 권한이 필요합니다.",
+            "error": "관리자(Admin) 권한이 필요합니다.",
             "forbidden": True
         })
         return None
@@ -22,7 +23,7 @@ def _require_dept_admin(handler, ip, action_name):
 
 # ---- /api/departments (POST) ----
 def handle_add_department(handler, raw_body, ip):
-    session = _require_dept_admin(handler, ip, "add_department")
+    session = _require_system_admin(handler, ip, "add_department")
     if session is None:
         return
     try:
@@ -80,7 +81,7 @@ def handle_add_department(handler, raw_body, ip):
 
 # ---- /api/departments/delete (POST) ----
 def handle_delete_department(handler, raw_body, ip):
-    session = _require_dept_admin(handler, ip, "delete_department")
+    session = _require_system_admin(handler, ip, "delete_department")
     if session is None:
         return
     try:
@@ -95,6 +96,10 @@ def handle_delete_department(handler, raw_body, ip):
         return
 
     with _save_lock:
+        departments = read_departments()
+        if not any(str(d.get("id")) == dept_id for d in departments):
+            handler._send_json(404, {"ok": False, "error": "부서를 찾을 수 없습니다."})
+            return
         ok, err = delete_department(dept_id)
         if not ok:
             handler._send_json(400, {"ok": False, "error": err})
@@ -106,7 +111,7 @@ def handle_delete_department(handler, raw_body, ip):
 
 # ---- /api/departments/update (POST) ----
 def handle_update_department(handler, raw_body, ip):
-    session = _require_dept_admin(handler, ip, "update_department")
+    session = _require_system_admin(handler, ip, "update_department")
     if session is None:
         return
     try:

@@ -37,6 +37,12 @@ function showTab(which, updateHash){
     return;
   }
 
+  if(which === "form" && typeof isViewerUser === "function" && isViewerUser()){
+    showToast("조회 전용(Viewer) 계정은 업무를 등록할 수 없습니다.");
+    showTab("home");
+    return;
+  }
+
   if(which === "chat" && !getCurrentUser()){
     showToast("로그인 후 이용할 수 있는 기능입니다. 먼저 로그인해 주세요.");
     if(idForm && idForm.hidden){

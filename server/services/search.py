@@ -96,6 +96,42 @@ def search_records(records, query, limit=6, extra_query=""):
     scored.sort(key=lambda pair: pair[0], reverse=True)
     return [r for _score, r in scored[:limit]]
 
+def _enrich_parent_summaries(records):
+    """Enriches each record with parentSummary (the title of its parent task) so the UI can clearly display parent names."""
+    title_by_key = {}
+    for r in records:
+        t = (r.get("title") or (r.get("jira") or {}).get("summary") or "").strip()
+        if not t:
+            continue
+        if r.get("id"):
+            title_by_key[str(r["id"])] = t
+            title_by_key[f"rec-{r['id']}"] = t
+            title_by_key[f"#{r['id']}"] = t
+        if r.get("cardCode"):
+            clean_c = str(r["cardCode"]).strip().upper()
+            title_by_key[clean_c] = t
+            title_by_key[clean_c.lstrip("#")] = t
+        if (r.get("jira") or {}).get("key"):
+            title_by_key[str(r["jira"]["key"]).strip().upper()] = t
+        if r.get("unlinked_jira_key"):
+            title_by_key[str(r["unlinked_jira_key"]).strip().upper()] = t
+
+    for r in records:
+        pk = (r.get("parentKey") or (r.get("jira") or {}).get("parentKey") or "").strip()
+        if pk and not r.get("parentSummary"):
+            clean_pk = pk.upper()
+            p_summary = (
+                title_by_key.get(clean_pk)
+                or title_by_key.get(clean_pk.lstrip("#"))
+                or title_by_key.get(clean_pk.replace("REC-", ""))
+                or title_by_key.get(pk)
+            )
+            if p_summary:
+                r["parentSummary"] = p_summary
+        elif not r.get("parentSummary"):
+            r["parentSummary"] = ""
+    return records
+
 def merged_records(cfg):
     """Local-First Data Merge:
     Local DB (records) is the authoritative Primary Source of Truth.
@@ -114,6 +150,7 @@ def merged_records(cfg):
         for r in records:
             r["jira"] = None
             r["isLocal"] = True
+        _enrich_parent_summaries(records)
         records.sort(key=lambda r: (r.get("date", "") or r.get("startDate", "")), reverse=True)
         return records, {"records": [], "synced_at": None, "error": None}
 
@@ -201,6 +238,7 @@ def merged_records(cfg):
 
     # Local records come first, followed by external Jira tasks
     records = merged_local + external_jira
+    _enrich_parent_summaries(records)
     records.sort(key=lambda r: (r.get("date", "") or r.get("startDate", "")), reverse=True)
     return records, cache
 

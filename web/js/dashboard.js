@@ -1023,12 +1023,45 @@ function renderSingleRecordCard(r, isChild, highlightId){
     ? '<span class="badge-subtask-count" title="' + escapeHtml(subtaskHint) + '">' + escapeHtml(subtaskBadgeText) + '</span>'
     : '';
 
-  var parentRefText = (window.i18n && typeof window.i18n.t === "function")
-    ? window.i18n.t("card.parent_ref", {key: escapeHtml(r.parentKey || "")})
-    : ("상위: " + escapeHtml(r.parentKey || ""));
-  var parentRefHtml = (r.parentKey && !isChild)
-    ? '<span class="badge-parent-ref">' + parentRefText + '</span>'
-    : '';
+  // Resolve parent title/summary
+  var parentTitle = (r.parentSummary || "").trim();
+  if(!parentTitle && r.parentKey && typeof records !== "undefined" && Array.isArray(records)){
+    var cleanPk = String(r.parentKey).trim().toUpperCase();
+    for(var pi = 0; pi < records.length; pi++){
+      var pCandidate = records[pi];
+      var pJKey = (pCandidate.jira && pCandidate.jira.key ? String(pCandidate.jira.key).toUpperCase() : "");
+      var pCode = (pCandidate.cardCode ? String(pCandidate.cardCode).toUpperCase().replace(/^#/, "") : "");
+      var pId = String(pCandidate.id || "");
+      if(cleanPk === pJKey || cleanPk === pCode || cleanPk === pId || cleanPk === ("REC-" + pId) || cleanPk === ("#" + pId)){
+        parentTitle = (pCandidate.title || (pCandidate.jira && pCandidate.jira.summary) || "").trim();
+        if(parentTitle) {
+          r.parentSummary = parentTitle;
+          break;
+        }
+      }
+    }
+  }
+
+  var parentRefHtml = "";
+  if(r.parentKey && !isChild){
+    var maxParentTitleLen = 22;
+    var parentTitleShort = parentTitle ? (parentTitle.length > maxParentTitleLen ? (parentTitle.slice(0, maxParentTitleLen).trim() + "...") : parentTitle) : "";
+    var parentTitleLabel = parentTitleShort ? (" (" + escapeHtml(parentTitleShort) + ")") : "";
+
+    var parentTooltip = (window.i18n && typeof window.i18n.t === "function")
+      ? (window.i18n.t("card.parent_ref", {key: r.parentKey}) + (parentTitle ? (" (" + parentTitle + ")") : "") + " (" + window.i18n.t("card.click_to_open_canvas") + ")")
+      : ("상위 작업: " + r.parentKey + (parentTitle ? (" (" + parentTitle + ")") : "") + " (클릭하여 캔버스 열기)");
+
+    var parentPrefix = (window.i18n && typeof window.i18n.t === "function")
+      ? (window.i18n.t("card.parent_prefix") || "상위:")
+      : "상위:";
+
+    parentRefHtml = '<span class="badge-parent-ref" title="' + escapeHtml(parentTooltip) + '" onclick="window.showIssueInCanvas(\'' + escapeHtml(r.parentKey).replace(/'/g, "\\'") + '\'); event.stopPropagation();" style="cursor:pointer;">' +
+      '<span class="parent-ref-prefix">' + escapeHtml(parentPrefix) + '</span> ' +
+      '<strong class="parent-ref-key">' + escapeHtml(r.parentKey) + '</strong>' +
+      (parentTitleShort ? (' <span class="parent-ref-title">' + parentTitleLabel + '</span>') : '') +
+    '</span>';
+  }
 
   var attachHtml = (r.attachments && r.attachments.length)
     ? '<div class="field"><b>첨부</b>' + r.attachments.map(escapeHtml).join(", ") + '</div>' : "";
@@ -1071,6 +1104,12 @@ function renderSingleRecordCard(r, isChild, highlightId){
   if(r.category && r.category !== "분류 대기"){
     metaParts.push('<span class="cat">' + escapeHtml(r.category) + '</span>');
   }
+
+  // Mức độ ưu tiên (chỉ đổi màu chữ theo mức độ, không icon, không nhãn)
+  var rawPrio = r.priority || (r.jira && r.jira.priority) || "보통";
+  var prioVal = (typeof formatPriority === "function") ? formatPriority(rawPrio) : rawPrio;
+  var prioColor = (prioVal === "낮음") ? "#22c55e" : (prioVal === "높음" ? "#f97316" : (prioVal === "긴급" ? "#ef4444" : "#eab308"));
+  metaParts.push('<span class="prio-text" style="color:' + prioColor + '; font-weight:600;">' + escapeHtml(prioVal) + '</span>');
 
   // Tên dự án: chỉ hiển thị nếu có dự án cụ thể và KHÔNG PHẢI là ARGOS WORKS / 프로젝트 미지정 (vì đây là tên hệ thống/mặc định dư thừa)
   var pName = (r.project || "").trim();

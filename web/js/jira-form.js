@@ -18,6 +18,24 @@ var startDateDisplay = document.getElementById("startDateDisplay");
 var dueDateDisplay = document.getElementById("dueDateDisplay");
 var parentKeySelect = document.getElementById("parentKeySelect");
 var participantsSelect = document.getElementById("participantsSelect");
+var prioritySelect = document.getElementById("prioritySelect");
+
+function updatePrioritySelectColor(selectEl){
+  if(!selectEl) return;
+  var colors = { "낮음": "#22c55e", "보통": "#eab308", "높음": "#f97316", "긴급": "#ef4444" };
+  selectEl.style.color = colors[selectEl.value] || "#eab308";
+  selectEl.style.fontWeight = "600";
+}
+
+if(prioritySelect){
+  updatePrioritySelectColor(prioritySelect);
+  prioritySelect.addEventListener("change", function(){
+    updatePrioritySelectColor(this);
+  });
+  prioritySelect.addEventListener("input", function(){
+    updatePrioritySelectColor(this);
+  });
+}
 
 function updateJiraIntegrationUI(){
   var isJiraEnabled = false;
@@ -184,12 +202,24 @@ function populateParentKeySelect(deptId, targetKeyToSelect){
         options: optionsForSelect,
         maxOptions: 100,
         placeholder: "상위 작업 검색 (예: VS-53, 신장동, 장욱재...)",
+        render: {
+          option: function(data, escape){
+            if(!data.value){
+              return '<div style="color:var(--ink-faint); padding: 8px 12px; font-weight:500;">' + escape(data.text) + '</div>';
+            }
+            return '<div style="padding: 8px 12px; color:var(--ink); font-weight:500;">' + escape(data.text) + '</div>';
+          },
+          item: function(data, escape){
+            if(!data.value){
+              return '<div style="color:var(--ink-faint); font-weight:500;">' + escape(data.text) + '</div>';
+            }
+            return '<div style="color:var(--ink); font-weight:600;">' + escape(data.text) + '</div>';
+          }
+        },
         onChange: function(){ this.blur(); }
       });
       var valueToSet = preserveKey || "";
-      if(valueToSet){
-        window.parentTomSelect.setValue(valueToSet, false);
-      }
+      window.parentTomSelect.setValue(valueToSet, false);
       tomSelectSuccess = true;
     } catch(err){
       console.warn("[TomSelect] init error, fallback to native select:", err);
@@ -659,6 +689,8 @@ if(form){
     fd.append("org", org);
     fd.append("title", title);
     fd.append("category", catSelect.value || "");
+    var prioVal = prioritySelect ? (prioritySelect.value || "보통") : "보통";
+    fd.append("priority", prioVal);
     var parentKeyVal = "";
     if(window.parentTomSelect){
       parentKeyVal = window.parentTomSelect.getValue() || "";
@@ -773,6 +805,10 @@ if(form){
     }
     if(window.participantsTomSelect){
       window.participantsTomSelect.setValue([]);
+    }
+    if(prioritySelect){
+      prioritySelect.value = "보통";
+      updatePrioritySelectColor(prioritySelect);
     }
     updateStartDateDisplay();
     updateDueDateDisplay();

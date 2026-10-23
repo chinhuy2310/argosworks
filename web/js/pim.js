@@ -907,7 +907,7 @@ function openProductDetail(product){
     pimModalWebLink.hidden = true;
   }
   if(pimModalEditBtn){
-    pimModalEditBtn.hidden = false;
+    pimModalEditBtn.hidden = !(typeof canModifyPimUser === "function" && canModifyPimUser());
   }
 
   // Meta items

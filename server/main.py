@@ -24,6 +24,7 @@ from db import init_db
 from handler import ArgosHandler, JarvisHandler
 from services.jira_client import sync_jira_cache, jira_auto_sync_loop
 from services.auth import cleanup_expired_sessions
+from wsgi import init_app, application
 
 def _session_cleanup_loop():
     import time
@@ -35,10 +36,7 @@ def _session_cleanup_loop():
         time.sleep(3600)  # Clean up expired sessions once every hour
 
 def main():
-    ensure_dirs()
-    ensure_seed_files()
-    init_db()  # SQLite DB 초기화 (테이블 생성 + WAL 모드)
-    threading.Thread(target=_session_cleanup_loop, daemon=True, name="SessionCleanup").start()
+    init_app()
     cfg = load_config()
     ArgosHandler.cfg = cfg
     JarvisHandler.cfg = cfg
@@ -70,12 +68,25 @@ def main():
     ssl_key = cfg.get("server", {}).get("ssl_keyfile") or os.environ.get("ARGOS_SSL_KEY", "")
     is_ssl_configured = bool(ssl_cert and ssl_key and os.path.exists(ssl_cert) and os.path.exists(ssl_key))
     proto = "https" if is_ssl_configured else "http"
-    ssl_state = f"활성화 (TLS Direct, {os.path.basename(ssl_cert)})" if is_ssl_configured else "HTTP (권장: Nginx/Cloudflare 리버스 프록시 또는 config.json의 ssl_certfile/ssl_keyfile)"
+    ssl_state = f"활성화 (TLS Direct, {os.path.basename(ssl_cert)})" if is_ssl_configured else "HTTP (권장: Nginx/Cloudflare/Caddy 리버스 프록시 또는 config.json의 ssl_certfile/ssl_keyfile)"
+
+    # Determine server engine: Waitress WSGI (Production) vs Fallback Threading Server
+    force_legacy = os.environ.get("ARGOS_USE_LEGACY_SERVER", "0") in ("1", "true", "yes")
+    use_waitress = False
+    if not force_legacy and not is_ssl_configured:
+        try:
+            import waitress
+            use_waitress = True
+        except ImportError:
+            use_waitress = False
+
+    server_engine_info = "Waitress Enterprise WSGI (64 Concurrency Workers)" if use_waitress else "Standalone Multi-Threaded Engine (Native/Direct TLS)"
 
     print("=" * 60)
     print(" ARGOS WORKS 백엔드 서버")
     print(" 데이터 폴더 :", DATA_DIR)
     print(f" 주소        : {proto}://{host}:{port}  (사내망: {proto}://<이 PC의 IP>:{port})")
+    print(" 서버 엔진   :", server_engine_info)
     print(" SSL/TLS     :", ssl_state)
     print(" Jira 연동   :", jira_state)
     print(" AI 서비스   :", ai_state)
@@ -84,18 +95,26 @@ def main():
     print(" 종료하려면 이 창에서 Ctrl+C 를 누르세요.")
     print("=" * 60)
 
-    # CSDL 자동 백업 스케줄러 시작
-    from services.backup_manager import start_backup_scheduler
-    start_backup_scheduler(interval_hours=24)
-
-    if is_voyage_configured(cfg):
-        # 서버 시작 시 백그라운드에서 증분(Incremental) 벡터 동기화 실행
-        threading.Thread(target=sync_all_vectors, args=(cfg,), daemon=True).start()
-
-    if cfg["jira"].get("enabled"):
-        # 서버가 켜지자마자 백그라운드에서 한 번 Jira를 동기화해둔다
-        threading.Thread(target=sync_jira_cache, args=(cfg,), daemon=True).start()
-        threading.Thread(target=jira_auto_sync_loop, args=(cfg,), daemon=True).start()
+    if use_waitress:
+        try:
+            import waitress
+            workers = int(os.environ.get("ARGOS_WORKER_THREADS", "64"))
+            waitress.serve(
+                application,
+                host=host,
+                port=port,
+                threads=workers,
+                channel_timeout=60,
+                cleanup_interval=30,
+                clear_untrusted_proxy_headers=False,
+            )
+        except KeyboardInterrupt:
+            print("\n서버를 종료합니다.")
+        except Exception as e:
+            print(f"\n서버 예외 발생: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+        return
 
     from concurrent.futures import ThreadPoolExecutor
 
@@ -105,14 +124,11 @@ def main():
         allow_reuse_address = True
         
         # Enterprise High-Capacity Thread Pool: 128 dedicated workers
-        # Designed for 8GB+ RAM servers. Gives 100+ concurrent users instant thread allocation
-        # with zero latency, backed by a 512 TCP connection backlog.
         _pool = ThreadPoolExecutor(max_workers=128, thread_name_prefix="ArgosWorker")
 
         def server_bind(self):
             import socket
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            # TCP_NODELAY: Disable Nagle's algorithm for sub-millisecond response latency
             try:
                 self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             except Exception:

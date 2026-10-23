@@ -102,12 +102,20 @@ def is_system_read_only():
 
 def generate_signed_license_key(customer_name, max_seats, expiry_date_str, modules, signing_key_hex=None):
     """라이선스 발급 서버용: Ed25519 개인키로 비대칭 전자서명된 오프라인 라이선스 키 생성."""
-    priv_hex = signing_key_hex or os.environ.get("ARGOS_LICENSE_SIGNING_KEY") or os.environ.get("ARGOS_LICENSE_SECRET")
+    # NOTE: ARGOS_LICENSE_SECRET is a legacy HMAC passphrase (scripts/init_deploy.py
+    # generates a token_urlsafe value), NOT an Ed25519 hex private key. Reading it
+    # here made key issuance crash with "non-hexadecimal number found".
+    priv_hex = signing_key_hex or os.environ.get("ARGOS_LICENSE_SIGNING_KEY")
     if not priv_hex:
         # Default signing key for vendor CLI / testing matching EMBEDDED_LICENSE_PUBLIC_KEY_HEX
         priv_hex = "79177ec5e385a059f4851cf8701b73f09111a25bc365046afb1d7fcfc42753a0"
 
-    priv_bytes = bytes.fromhex(priv_hex.strip())
+    try:
+        priv_bytes = bytes.fromhex(priv_hex.strip())
+    except ValueError:
+        raise ValueError(
+            "ARGOS_LICENSE_SIGNING_KEY must be a hex-encoded Ed25519 private key (64 hex chars)."
+        )
     private_key = ed25519.Ed25519PrivateKey.from_private_bytes(priv_bytes)
 
     payload = {

@@ -141,6 +141,7 @@
       "card.subtask_title": "하위 작업 {count}건 펼치기/접기",
       "card.subtask_hint": "하위 작업 {count}건 (클릭하여 캔버스에서 확인)",
       "card.subtask_badge": "하위 {count}건",
+      "card.parent_prefix": "상위:",
       "card.parent_ref": "상위: {key}",
       "card.participants_title": "참여자: {list}",
       "card.click_to_open_canvas": "클릭하여 캔버스 열기",
@@ -168,6 +169,10 @@
       "record_edit.assignee_label": "담당자",
       "record_edit.participants_label": "참여자",
       "record_edit.participants_ph": "예: 홍길동, 김철수 (쉼표 구분)",
+      "record_edit.parent_label": "상위 작업",
+      "record_edit.parent_optional": "(선택)",
+      "record_edit.parent_none": "(상위 작업 없음 / 최상위 작업으로 설정)",
+      "record_edit.parent_ph": "상위 작업 검색 (코드 또는 제목 입력)",
       "record_edit.start_date_label": "시작일",
       "record_edit.due_date_label": "마감일",
       "record_edit.memo_label": "상세 내용 / 메모",
@@ -382,6 +387,7 @@
       "card.subtask_title": "Expand/collapse {count} subtasks",
       "card.subtask_hint": "{count} subtasks (click to view in canvas)",
       "card.subtask_badge": "{count} Subtasks",
+      "card.parent_prefix": "Parent:",
       "card.parent_ref": "Parent: {key}",
       "card.participants_title": "Participants: {list}",
       "card.click_to_open_canvas": "Click to open canvas",
@@ -409,6 +415,10 @@
       "record_edit.assignee_label": "Assignee",
       "record_edit.participants_label": "Participants",
       "record_edit.participants_ph": "e.g. John Doe, Alice (comma separated)",
+      "record_edit.parent_label": "Parent Task",
+      "record_edit.parent_optional": "(Optional)",
+      "record_edit.parent_none": "(No Parent / Set as Root Task)",
+      "record_edit.parent_ph": "Search parent task (code or title)...",
       "record_edit.start_date_label": "Start Date",
       "record_edit.due_date_label": "Due Date",
       "record_edit.memo_label": "Details / Notes",
@@ -534,6 +544,8 @@
       var text = t(key);
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
         el.value = text;
+      } else if (text.indexOf("<br") !== -1 || el.hasAttribute("data-i18n-html")) {
+        el.innerHTML = text;
       } else {
         el.textContent = text;
       }

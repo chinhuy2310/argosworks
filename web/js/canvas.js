@@ -47,9 +47,18 @@
     if(!prio) return '보통';
     var low = String(prio).toLowerCase();
     if(low.indexOf('low') !== -1 || low.indexOf('낮') !== -1 || low.indexOf('thấp') !== -1) return '낮음';
+    if(low.indexOf('crit') !== -1 || low.indexOf('긴급') !== -1 || low.indexOf('khẩn') !== -1 || low.indexOf('urg') !== -1 || low.indexOf('highest') !== -1) return '긴급';
     if(low.indexOf('high') !== -1 || low.indexOf('높') !== -1 || low.indexOf('cao') !== -1) return '높음';
-    if(low.indexOf('crit') !== -1 || low.indexOf('긴급') !== -1 || low.indexOf('khẩn') !== -1) return '긴급';
-    return prio;
+    return '보통';
+  }
+
+  function getPriorityColor(prio){
+    var p = formatPriority(prio);
+    if(p === '낮음') return '#22c55e'; // Green
+    if(p === '보통') return '#eab308'; // Yellow
+    if(p === '높음') return '#f97316'; // Orange
+    if(p === '긴급') return '#ef4444'; // Red
+    return '#eab308';
   }
 
   function formatAssignee(assignee){
@@ -507,7 +516,20 @@
 
     var attachments = d.attachments || [];
     var parentKey = d.parentKey || (d.jira && d.jira.parentKey) || null;
-    var parentSummary = d.parentSummary || "";
+    var parentSummary = (d.parentSummary || "").trim();
+    if(!parentSummary && parentKey && typeof records !== "undefined" && Array.isArray(records)){
+      var cleanPk = String(parentKey).trim().toUpperCase();
+      for(var pi = 0; pi < records.length; pi++){
+        var pCand = records[pi];
+        var pJKey = (pCand.jira && pCand.jira.key ? String(pCand.jira.key).toUpperCase() : "");
+        var pCode = (pCand.cardCode ? String(pCand.cardCode).toUpperCase().replace(/^#/, "") : "");
+        var pId = String(pCand.id || "");
+        if(cleanPk === pJKey || cleanPk === pCode || cleanPk === pId || cleanPk === ("REC-" + pId) || cleanPk === ("#" + pId)){
+          parentSummary = (pCand.title || (pCand.jira && pCand.jira.summary) || "").trim();
+          if(parentSummary) break;
+        }
+      }
+    }
 
     // 4. Action Buttons Template (Choivis Style)
     // ARGOS WORKS hỗ trợ phả hệ đa tầng (N-levels hierarchy): mọi thẻ đều có thể tạo công việc con
@@ -529,15 +551,33 @@
           ? Boolean(d.jiraConnected)
           : (window.__JIRA_STATUS__ ? (window.__JIRA_STATUS__.enabled && window.__JIRA_STATUS__.connected) : false));
 
+    // Phương án A: Chỉ Admin và Manager cùng phòng ban mới có quyền xóa thẻ (Member và Viewer không có nút xóa)
+    var canDeleteRecord = false;
+    var curUser = (typeof getCurrentUser === "function") ? getCurrentUser() : null;
+    if(curUser){
+      var curRole = curUser.role || (curUser.isAdmin || curUser.is_admin ? "admin" : "member");
+      if(curRole === "admin" || curUser.isAdmin || curUser.is_admin){
+        canDeleteRecord = true;
+      } else if(curRole === "manager"){
+        var uDept = String(curUser.dept_id || curUser.org || "").trim().toLowerCase();
+        var rDept = String(d.dept_id || d.org || "").trim().toLowerCase();
+        if(uDept && rDept && uDept === rDept){
+          canDeleteRecord = true;
+        }
+      }
+    }
+
     if(isLocal){
       if(isJiraConnectedAndEnabled){
         actionBtnList.push(
           '<button onclick="window.confirmPushLocalRecordToJira(\'' + escapeHtml(key) + '\', \'' + escapeHtml(summary).replace(/'/g, "\\'") + '\')" class="canvas-action-btn canvas-btn-push-jira" title="이 로컬 업무를 Jira Cloud 티켓으로 발행합니다">🚀 Jira로 내보내기</button>'
         );
       }
-      actionBtnList.push(
-        '<button onclick="window.confirmDeleteLocalRecord(\'' + escapeHtml(key) + '\', \'' + escapeHtml(summary).replace(/'/g, "\\'") + '\')" class="canvas-action-btn canvas-btn-delete-local" title="이 로컬 업무 기록을 완전히 삭제합니다">🗑️ 삭제</button>'
-      );
+      if(canDeleteRecord){
+        actionBtnList.push(
+          '<button onclick="window.confirmDeleteLocalRecord(\'' + escapeHtml(key) + '\', \'' + escapeHtml(summary).replace(/'/g, "\\'") + '\')" class="canvas-action-btn canvas-btn-delete-local" title="이 로컬 업무 기록을 완전히 삭제합니다">🗑️ 삭제</button>'
+        );
+      }
     }
 
     if(canCreateSubtask){
@@ -779,10 +819,27 @@
     );
 
     // 10. Dates Footer
+    function formatFooterDate(val){
+      if(!val) return '-';
+      try {
+        var dt = new Date(val);
+        if(!isNaN(dt.getTime())){
+          var isEn = (window.i18n && typeof window.i18n.getLang === "function") 
+            ? (window.i18n.getLang() === "en") 
+            : (localStorage.getItem("argos_lang") === "en" || localStorage.getItem("jarvisLang") === "en");
+          return dt.toLocaleString(isEn ? 'en-US' : 'ko-KR');
+        }
+      } catch(e){}
+      return String(val);
+    }
+
+    var rawCreated = d.created || d.createdAt || d.created_at || null;
+    var rawUpdated = d.updated || d.updatedAt || d.updated_at || null;
+
     var datesHtml = (
       '<div style="display:flex; gap:16px; color:var(--text-muted); font-size:12px; border-top:1px solid var(--border-light); padding-top:12px; margin-top:8px;">' +
-        '<span>생성일: ' + (d.created ? new Date(d.created).toLocaleString('ko-KR') : (d.date || '-')) + '</span>' +
-        '<span>수정일: ' + (d.updated ? new Date(d.updated).toLocaleString('ko-KR') : '-') + '</span>' +
+        '<span>생성일: ' + formatFooterDate(rawCreated) + '</span>' +
+        '<span>수정일: ' + formatFooterDate(rawUpdated) + '</span>' +
       '</div>'
     );
 
@@ -814,7 +871,7 @@
           '<div style="flex:1; min-width:0;">' +
             '<div style="font-size:17px; font-weight:700; color:var(--text-main); word-break:break-word; line-height:1.4;">' + escapeHtml(summary) + '</div>' +
             '<div style="font-size:12px; color:var(--text-muted); margin-top:4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">' +
-              '<span>' + escapeHtml(displayType) + ' • ' + escapeHtml(displayPriority) + '</span>' +
+              '<span>' + escapeHtml(displayType) + ' • <span style="color:' + getPriorityColor(displayPriority) + '; font-weight:600;">' + escapeHtml(displayPriority) + '</span></span>' +
               (scheduleRangeText ? (
                 '<span style="color:var(--text-muted); opacity:0.6;">•</span>' +
                 '<span style="display:inline-flex; align-items:center; gap:5px; padding:2px 8px; border-radius:4px; background:' + (d.is_scheduled === false ? 'rgba(100,116,139,0.12)' : 'rgba(51, 170, 211, 0.12)') + '; color:' + (d.is_scheduled === false ? 'var(--text-muted)' : 'var(--vs-cyan, #33aad3)') + '; font-weight:600; font-size:11.5px; border:1px solid ' + (d.is_scheduled === false ? 'rgba(100,116,139,0.3)' : 'rgba(51, 170, 211, 0.28)') + ';" title="' + (d.is_scheduled === false ? '달력 미표시 상태 (보관함에 보관 중)' : '배정된 일정') + '">' +
@@ -837,8 +894,8 @@
             '👤 ' + escapeHtml(displayAssignee) +
           '</span>' +
           (parentKey ? (
-            '<span style="padding:4px 12px; border-radius:12px; font-size:12px; background:rgba(124, 58, 237, 0.12); color:#a78bfa; border:1px solid rgba(167, 139, 250, 0.3); cursor:pointer;" onclick="window.showIssueInCanvas(\'' + escapeHtml(parentKey) + '\')">' +
-              '⬆ ' + escapeHtml(parentKey) + (parentSummary ? ': ' + escapeHtml(parentSummary) : '') +
+            '<span style="padding:4px 12px; border-radius:12px; font-size:12px; background:rgba(124, 58, 237, 0.12); color:#a78bfa; border:1px solid rgba(167, 139, 250, 0.3); cursor:pointer;" onclick="window.showIssueInCanvas(\'' + escapeHtml(parentKey) + '\')" title="' + escapeHtml('상위 작업: ' + parentKey + (parentSummary ? ' (' + parentSummary + ')' : '') + ' (클릭하여 캔버스 열기)') + '">' +
+              '⬆ ' + escapeHtml(parentKey) + (parentSummary ? (' (' + escapeHtml(parentSummary.length > 25 ? (parentSummary.slice(0, 24).trim() + '...') : parentSummary) + ')') : '') +
             '</span>'
           ) : '') +
         '</div>' +
@@ -892,17 +949,33 @@
     document.querySelectorAll('.status-dropdown-popup').forEach(function(el){ el.remove(); });
     if(!badgeEl) return;
 
+    var curUser = (typeof getCurrentUser === "function") ? getCurrentUser() : null;
+    var isAdm = false;
+    var isMgr = false;
+    if(curUser){
+      var curRole = curUser.role || (curUser.isAdmin || curUser.is_admin ? "admin" : "member");
+      if(curRole === "admin" || curUser.isAdmin || curUser.is_admin){
+        isAdm = true;
+      } else if(curRole === "manager"){
+        isMgr = true;
+      }
+    }
+    var canComplete = isAdm || isMgr;
+
     var rect = badgeEl.getBoundingClientRect();
     var statuses = [
       { value: '예정', label: '예정', bg: 'rgba(100, 116, 139, 0.15)', color: '#94a3b8' },
       { value: '진행', label: '진행', bg: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' },
-      { value: '검토', label: '검토', bg: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' },
-      { value: '완료', label: '완료', bg: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }
+      { value: '검토', label: '검토', bg: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' }
     ];
+
+    if(canComplete){
+      statuses.push({ value: '완료', label: '완료', bg: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' });
+    }
 
     var dropdown = document.createElement('div');
     dropdown.className = 'status-dropdown-popup';
-    dropdown.style.cssText = 'position:fixed; top:' + (rect.bottom + 4) + 'px; left:' + rect.left + 'px; z-index:9999; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:4px; box-shadow:0 6px 20px rgba(0,0,0,0.5); min-width:110px;';
+    dropdown.style.cssText = 'position:fixed; top:' + (rect.bottom + 4) + 'px; left:' + rect.left + 'px; z-index:9999; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:4px; box-shadow:0 6px 20px rgba(0,0,0,0.5); min-width:130px;';
 
     statuses.forEach(function(s){
       var item = document.createElement('div');
@@ -913,16 +986,23 @@
       item.addEventListener('click', function(e){
         e.stopPropagation();
         dropdown.remove();
+
         apiPostJson("/api/issues/transition", { issue_key: issueKey, status: s.value }).then(function(res){
           if(res && res.ok){
-            if(typeof showToast === "function") showToast("상태를 '" + s.value + "'(으)로 변경했습니다.");
+            var isEn = (window.i18n && typeof window.i18n.getLang === "function") 
+              ? (window.i18n.getLang() === "en") 
+              : (localStorage.getItem("argos_lang") === "en" || localStorage.getItem("jarvisLang") === "en");
+            var successMsg = s.value === '검토'
+              ? (isEn ? "Status changed to 'Review'. Approval notification sent to manager & admin." : "상태를 '검토'로 변경했습니다. 부서 관리자 및 시스템 관리자에게 승인 요청 알림이 전송되었습니다.")
+              : (isEn ? "Status updated to '" + s.value + "'." : "상태를 '" + s.value + "'(으)로 변경했습니다.");
+            if(typeof showToast === "function") showToast(successMsg, 3500);
             window.showIssueInCanvas(issueKey);
             if(typeof loadRecords === "function") loadRecords();
           } else {
-            if(typeof showToast === "function") showToast((res && res.error) || "상태 변경 실패");
+            if(typeof showToast === "function") showToast((res && res.error) || "상태 변경 실패", 3500, true);
           }
         }).catch(function(err){
-          if(typeof showToast === "function") showToast("서버 오류: " + err.message);
+          if(typeof showToast === "function") showToast("서버 오류: " + err.message, 3500, true);
         });
       });
       dropdown.appendChild(item);
@@ -1627,6 +1707,19 @@
     function closeModal(){
       modal.hidden = true;
       if(errEl) errEl.hidden = true;
+      if(window.recordEditParentTomSelect){
+        try { window.recordEditParentTomSelect.setValue("", false); } catch(e){}
+      }
+    }
+
+    var editPrioSelect = document.getElementById("recordEditPrioritySelect");
+    if(editPrioSelect){
+      editPrioSelect.addEventListener("change", function(){
+        this.style.color = getPriorityColor(this.value);
+      });
+      editPrioSelect.addEventListener("input", function(){
+        this.style.color = getPriorityColor(this.value);
+      });
     }
 
     if(closeBtn) closeBtn.addEventListener("click", closeModal);
@@ -1728,6 +1821,14 @@
       var memoVal = d.memo || d.description || "";
       if(memoInput) memoInput.value = memoVal;
 
+      var editPrioEl = document.getElementById("recordEditPrioritySelect");
+      if(editPrioEl){
+        var curPrio = formatPriority(d.priority || ((d.jira && d.jira.priority) ? d.jira.priority : "보통"));
+        editPrioEl.value = curPrio;
+        editPrioEl.style.color = getPriorityColor(curPrio);
+        editPrioEl.style.fontWeight = "600";
+      }
+
       // Optimistic Locking: 현재 편집 중인 레코드의 버전 보관
       window.__editingRecordVersion = (d.version !== undefined && d.version !== null) ? Number(d.version) : 1;
 
@@ -1738,8 +1839,147 @@
       }
 
       populateAssignees(d.assignee || "");
+      populateParentOptions(d.parentKey || (d.jira && d.jira.parentKey) || "", key, d.id);
       modal.hidden = false;
       if(titleInput) titleInput.focus();
+    }
+
+    function populateParentOptions(selectedParentKey, currentKey, currentId){
+      var select = document.getElementById("recordEditParentSelect");
+      if(!select) return;
+
+      var isEn = (window.i18n && typeof window.i18n.getLang === "function")
+        ? (window.i18n.getLang() === "en")
+        : (localStorage.getItem("argos_lang") === "en" || localStorage.getItem("jarvisLang") === "en");
+
+      var emptyLabel = (window.i18n && typeof window.i18n.t === "function")
+        ? (window.i18n.t("record_edit.parent_none") || (isEn ? "(No Parent / Set as Root Task)" : "(상위 작업 없음 / 최상위 작업으로 설정)"))
+        : (isEn ? "(No Parent / Set as Root Task)" : "(상위 작업 없음 / 최상위 작업으로 설정)");
+
+      var placeholderText = (window.i18n && typeof window.i18n.t === "function")
+        ? (window.i18n.t("record_edit.parent_ph") || (isEn ? "Search parent task (code or title)..." : "상위 작업 검색 (코드 또는 제목 입력)"))
+        : (isEn ? "Search parent task (code or title)..." : "상위 작업 검색 (코드 또는 제목 입력)");
+
+      var allPool = (typeof records !== "undefined" && Array.isArray(records)) ? records : [];
+      var cleanCurKey = String(currentKey || "").trim().toUpperCase();
+      var cleanCurId = String(currentId || "").trim();
+      var cleanSelParent = String(selectedParentKey || "").trim().toUpperCase();
+
+      // Collect all descendants of current record so we don't allow setting a descendant as parent (cycle prevention)
+      var descendantKeys = new Set();
+      if(cleanCurKey) descendantKeys.add(cleanCurKey);
+      if(cleanCurId) {
+        descendantKeys.add(cleanCurId);
+        descendantKeys.add("REC-" + cleanCurId);
+        descendantKeys.add("#" + cleanCurId);
+      }
+
+      var addedAny = true;
+      for(var pass = 0; pass < 5 && addedAny; pass++){
+        addedAny = false;
+        for(var i = 0; i < allPool.length; i++){
+          var item = allPool[i];
+          var itemParent = String(item.parentKey || (item.jira && item.jira.parentKey) || "").trim().toUpperCase();
+          if(itemParent && descendantKeys.has(itemParent)){
+            var itemKey = (item.cardCode || (item.jira && item.jira.key) || String(item.id || "")).toUpperCase();
+            if(itemKey && !descendantKeys.has(itemKey)){
+              descendantKeys.add(itemKey);
+              if(item.id) descendantKeys.add(String(item.id));
+              addedAny = true;
+            }
+          }
+        }
+      }
+
+      var optionsForSelect = [
+        {
+          value: "",
+          text: emptyLabel,
+          search: isEn ? "none root no parent" : "없음 최상위 루트 none"
+        }
+      ];
+
+      var matchedValue = "";
+
+      allPool.forEach(function(rec){
+        var recKey = (rec.cardCode || (rec.jira && rec.jira.key) || ("#" + rec.id)).toUpperCase();
+        var recCleanKey = recKey.replace(/^#/, "");
+        var recId = String(rec.id || "");
+
+        // Exclude self and descendants
+        if(descendantKeys.has(recKey) || descendantKeys.has(recCleanKey) || descendantKeys.has(recId)){
+          return;
+        }
+
+        var title = (rec.title || (rec.jira && rec.jira.summary) || "").trim();
+        var shortTitle = title.length > 36 ? (title.slice(0, 35).trim() + "...") : title;
+        var assigneePart = rec.assignee ? (" · " + rec.assignee) : "";
+
+        var text = "[" + recKey + "] " + shortTitle + assigneePart;
+        var searchStr = (recKey + " " + title + " " + (rec.assignee || "")).toLowerCase();
+
+        optionsForSelect.push({
+          value: recKey,
+          text: text,
+          search: searchStr
+        });
+
+        if(cleanSelParent && (recKey === cleanSelParent || recCleanKey === cleanSelParent || recId === cleanSelParent)){
+          matchedValue = recKey;
+        }
+      });
+
+      // Destroy old TomSelect instance if present
+      if(window.recordEditParentTomSelect){
+        try { window.recordEditParentTomSelect.destroy(); } catch(e){}
+        window.recordEditParentTomSelect = null;
+      }
+
+      var tomSuccess = false;
+      if(window.TomSelect && select){
+        try {
+          select.innerHTML = "";
+          window.recordEditParentTomSelect = new TomSelect(select, {
+            allowEmptyOption: true,
+            create: false,
+            sortField: null,
+            searchField: ["text", "value", "search"],
+            options: optionsForSelect,
+            maxOptions: 100,
+            placeholder: placeholderText,
+            render: {
+              option: function(data, escape){
+                if(!data.value){
+                  return '<div style="color:var(--ink-faint); padding: 8px 12px; font-weight:500;">' + escape(data.text) + '</div>';
+                }
+                return '<div style="padding: 8px 12px; color:var(--ink); font-weight:500;">' + escape(data.text) + '</div>';
+              },
+              item: function(data, escape){
+                if(!data.value){
+                  return '<div style="color:var(--ink-faint); font-weight:500;">' + escape(data.text) + '</div>';
+                }
+                return '<div style="color:var(--ink); font-weight:600;">' + escape(data.text) + '</div>';
+              }
+            },
+            onChange: function(){ this.blur(); }
+          });
+          if(matchedValue){
+            window.recordEditParentTomSelect.setValue(matchedValue, false);
+          } else {
+            window.recordEditParentTomSelect.setValue("", false);
+          }
+          tomSuccess = true;
+        } catch(err){
+          console.warn("[TomSelect] recordEditParentSelect init error, fallback to native:", err);
+        }
+      }
+
+      if(!tomSuccess && select){
+        select.innerHTML = optionsForSelect.map(function(o){
+          var sel = (o.value === matchedValue) ? " selected" : "";
+          return '<option value="' + escapeHtml(o.value) + '"' + sel + '>' + escapeHtml(o.text) + '</option>';
+        }).join("");
+      }
     }
 
     form.addEventListener("submit", function(e){
@@ -1757,6 +1997,13 @@
       var startDate = (document.getElementById("recordEditStartDateInput") || {}).value;
       var dueDate = (document.getElementById("recordEditDueDateInput") || {}).value;
       var memo = (document.getElementById("recordEditMemoInput") || {}).value.trim();
+      var parentKey = "";
+      if(window.recordEditParentTomSelect){
+        parentKey = String(window.recordEditParentTomSelect.getValue() || "").trim();
+      } else {
+        var parentSelect = document.getElementById("recordEditParentSelect");
+        parentKey = parentSelect ? parentSelect.value.trim() : "";
+      }
 
       if(!title){
         if(errEl){
@@ -1782,16 +2029,21 @@
         submitBtn.textContent = "저장 중...";
       }
 
+      var editPrioEl = document.getElementById("recordEditPrioritySelect");
+      var priorityVal = editPrioEl ? (editPrioEl.value || "보통") : "보통";
+
       var payload = {
         key: key,
         expected_version: window.__editingRecordVersion || 1,
         title: title,
+        priority: priorityVal,
         assignee: assignee,
         assigneeEmail: assigneeEmail,
         participants: participants,
         startDate: startDate,
         dueDate: dueDate,
-        memo: memo
+        memo: memo,
+        parentKey: parentKey
       };
 
       apiPost("/api/records/update", payload).then(function(res){

@@ -307,6 +307,59 @@ def trigger_status_changed_notification(record_id, title, author_name, old_statu
     )
 
 
+def trigger_review_request_notification(local_rec, sender_session):
+    """
+    일반 사용자가 업무 카드를 '검토' 상태로 변경했을 때 부서 관리자(Manager) 및 시스템 관리자(Admin)에게 알림 전송.
+    """
+    if not local_rec:
+        return
+    try:
+        from db import query
+        rec_dept = (local_rec.get("dept_id") or local_rec.get("org") or "").strip()
+        rec_title = local_rec.get("title") or local_rec.get("summary") or ""
+        card_code = local_rec.get("cardCode") or local_rec.get("card_code") or f"#{local_rec.get('id')}"
+        sender_name = (sender_session.get("name") if isinstance(sender_session, dict) else "") or "담당자"
+        sender_email = (sender_session.get("email") if isinstance(sender_session, dict) else "").strip().lower()
+
+        # Find all active admins and managers of this department
+        managers_and_admins = query(
+            """SELECT id, name, email, role, is_admin FROM users
+               WHERE (disabled = 0 OR disabled IS NULL)
+                 AND (status = 'active' OR status IS NULL)
+                 AND (role = 'admin' OR is_admin = 1 OR (role = 'manager' AND LOWER(dept_id) = LOWER(?)))""",
+            (rec_dept,)
+        )
+
+        notif_title = f"[검토 요청] {card_code} {rec_title}"
+        notif_content = f"{sender_name}님이 '{rec_title}' 작업을 '검토' 상태로 변경하고 완료 승인을 요청했습니다."
+
+        notified_emails = set()
+        for target_user in (managers_and_admins or []):
+            t_email = (target_user.get("email") or "").strip().lower()
+            t_name = target_user.get("name") or target_user.get("username") or ""
+            if t_email and t_email == sender_email:
+                continue
+            if t_email and t_email in notified_emails:
+                continue
+            if t_email:
+                notified_emails.add(t_email)
+
+            add_notification(
+                recipient_email=t_email,
+                recipient_name=t_name,
+                sender_name=sender_name,
+                notif_type="mention",
+                title=notif_title,
+                content=notif_content,
+                link_id=str(card_code),
+                tag="검토요청",
+                tag_type="review"
+            )
+    except Exception as e:
+        import sys
+        print(f"[ReviewNotification] Error sending review notification: {e}", file=sys.stderr)
+
+
 def trigger_comment_notification(record_id, title, author_name, comment_body, assignee_name="", assignee_email=""):
     """Trigger notification when someone leaves a comment."""
     # Do not notify if author of comment is the assignee themselves

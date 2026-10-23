@@ -984,14 +984,36 @@ select.filter-select{
 .badge-parent-ref{
   display: inline-flex;
   align-items: center;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--ink-faint);
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-muted, #475569);
   background: var(--code-bg);
-  padding: 1px 6px;
+  padding: 1.5px 7px;
   border-radius: 4px;
   margin-left: 6px;
   border: 1px solid var(--line);
+  max-width: 320px;
+  white-space: nowrap;
+  vertical-align: middle;
+  transition: all 0.15s ease;
+}
+.badge-parent-ref:hover{
+  background: rgba(14, 165, 233, 0.08);
+  border-color: rgba(14, 165, 233, 0.4);
+  color: var(--text-cyan, #0ea5e9);
+}
+.badge-parent-ref .parent-ref-prefix{
+  opacity: 0.75;
+  font-size: 10px;
+}
+.badge-parent-ref .parent-ref-key{
+  font-weight: 600;
+  color: var(--ink);
+}
+.badge-parent-ref .parent-ref-title{
+  color: var(--ink-faint);
+  font-weight: 400;
 }
 
 .org-tag{

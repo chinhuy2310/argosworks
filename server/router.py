@@ -15,7 +15,7 @@ from services.data_store import (
     get_record_by_id, update_record_status, add_record_comment, add_record_attachment,
     delete_record, link_record_jira, find_record_by_key_or_code, get_record_hierarchy_chain,
     read_product_categories, get_product_categories_and_templates,
-    save_product_category, delete_product_category, update_record_details
+    save_product_category, delete_product_category, update_record_details, _UNSET
 )
 from services.search import merged_records, search_records, product_as_search_record, schedule_event_as_search_record
 from services.jira_client import (
@@ -39,6 +39,16 @@ from services.vector_store import (
     get_vector_stats, check_vector_sync_status, delete_vector_document
 )
 from utils.logging import log_line
+
+
+def _audit(session, ip, action, target_type, target_id, details=None):
+    """Ghi audit trail cho thao tác nhạy cảm; không bao giờ làm hỏng request."""
+    try:
+        from services.audit_logger import log_audit
+        log_audit(session, ip, action, target_type, target_id, details=details)
+    except Exception:
+        pass
+
 
 # --- GET Handlers ---
 
@@ -515,6 +525,14 @@ def handle_post_notification_read(handler, raw_body, ip):
     if not notif_id:
         handler._send_json(400, {"ok": False, "error": "알림 ID가 필요합니다."})
         return
+    # Chống IDOR: chỉ chủ sở hữu notification (hoặc broadcast) mới được đánh dấu đã đọc
+    from db import get_one
+    from services.auth import user_can_access_notification
+    notif_row = get_one("SELECT * FROM notifications WHERE id = ?", (notif_id,))
+    if not notif_row or not user_can_access_notification(session, notif_row):
+        handler._send_json(404, {"ok": False, "error": "알림을 찾을 수 없습니다."})
+        return
+
     ok = mark_notification_as_read(notif_id)
     handler._send_json(200, {"ok": ok})
     access_log(ip, "notif_read", 200, f"id={notif_id} by {session.get('name')}")
@@ -806,6 +824,22 @@ def handle_assign_schedule_task(handler, raw_body, ip):
         handler._send_json(400, {"ok": False, "error": "taskId가 필요합니다."})
         return
 
+    # RBAC: chỉ người được phép sửa card mới được đổi lịch (viewer bị chặn)
+    from services.data_store import find_record_by_key_or_code
+    from services.auth import check_record_write_access
+    from services.license_manager import is_system_read_only
+    target_rec = find_record_by_key_or_code(task_id)
+    if target_rec:
+        if is_system_read_only():
+            handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+            return
+        allowed, deny_err = check_record_write_access(session, target_rec)
+        if not allowed:
+            access_log(ip, "forbidden_assign_schedule_task", 403,
+                       f"{task_id} by {session.get('name')}")
+            handler._send_json(403, {"ok": False, "error": deny_err})
+            return
+
     action = payload.get("action")
     if action == "show" or payload.get("restore"):
         from services.data_store import set_record_schedule_visibility
@@ -829,6 +863,8 @@ def handle_assign_schedule_task(handler, raw_body, ip):
             handler._send_json(404, {"ok": False, "error": f"해당 업무 카드 [{task_id}]를 찾을 수 없습니다."})
             return
         access_log(ip, "unassign_schedule_task", 200, f"{task_id}")
+        _audit(session, ip, "RECORD_SCHEDULE_UNASSIGN", "record", task_id,
+               {"wipeDates": bool(payload.get("wipeDates"))})
         handler._send_json(200, {
             "ok": True,
             "taskId": task_id,
@@ -864,6 +900,8 @@ def handle_assign_schedule_task(handler, raw_body, ip):
             pass
 
     access_log(ip, "assign_schedule_task", 200, f"{task_id} -> {saved_date}")
+    _audit(session, ip, "RECORD_SCHEDULE_ASSIGN", "record", task_id,
+           {"date": saved_date, "endDate": end_date or saved_date})
     handler._send_json(200, {
         "ok": True,
         "taskId": task_id,
@@ -887,6 +925,21 @@ def handle_unassign_schedule_task(handler, raw_body, ip):
         handler._send_json(400, {"ok": False, "error": "taskId가 필요합니다."})
         return
 
+    from services.data_store import find_record_by_key_or_code
+    from services.auth import check_record_write_access
+    from services.license_manager import is_system_read_only
+    target_rec = find_record_by_key_or_code(task_id)
+    if target_rec:
+        if is_system_read_only():
+            handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+            return
+        allowed, deny_err = check_record_write_access(session, target_rec)
+        if not allowed:
+            access_log(ip, "forbidden_unassign_schedule_task", 403,
+                       f"{task_id} by {session.get('name')}")
+            handler._send_json(403, {"ok": False, "error": deny_err})
+            return
+
     wipe_dates = bool(payload.get("wipeDates"))
     from services.data_store import clear_record_work_date
     rec_id, jira_key = clear_record_work_date(task_id, wipe_dates=wipe_dates)
@@ -895,6 +948,8 @@ def handle_unassign_schedule_task(handler, raw_body, ip):
         return
 
     access_log(ip, "unassign_schedule_task", 200, f"{task_id}")
+    _audit(session, ip, "RECORD_SCHEDULE_UNASSIGN", "record", task_id,
+           {"wipeDates": wipe_dates})
     handler._send_json(200, {
         "ok": True,
         "taskId": task_id,
@@ -1279,12 +1334,19 @@ def handle_post_issue_transition(handler, raw_body, ip):
         if is_system_read_only():
             handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
             return
-        from services.auth import can_modify_record
-        if not can_modify_record(session, local_rec):
-            handler._send_json(403, {"ok": False, "error": "해당 업무 카드의 상태를 변경할 권한이 없습니다."})
+        from services.auth import can_transition_status
+        can_trans, trans_err = can_transition_status(session, local_rec, status)
+        if not can_trans:
+            handler._send_json(403, {"ok": False, "error": trans_err or "해당 작업 카드의 상태를 변경할 권한이 없습니다."})
             return
         old_status = local_rec.get("status")
         update_record_status(local_rec["id"], status)
+        if status in ("검토", "Review", "검토중"):
+            try:
+                from services.notification_service import trigger_review_request_notification
+                trigger_review_request_notification(local_rec, session)
+            except Exception:
+                pass
         try:
             from services.audit_logger import log_audit
             log_audit(session, ip, "RECORD_STATUS_UPDATE", "record", str(local_rec["id"]), details={"old_status": old_status, "new_status": status, "card_code": issue_key})
@@ -1358,6 +1420,19 @@ def handle_post_issue_attachment(handler, raw_body, ip):
             local_rec = get_record_by_id(int(clean_id))
 
     if local_rec:
+        # RBAC: viewer bị chặn; chỉ người có quyền sửa card mới được đính kèm file
+        from services.auth import check_record_write_access
+        from services.license_manager import is_system_read_only
+        if is_system_read_only():
+            handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+            return
+        allowed, deny_err = check_record_write_access(session, local_rec)
+        if not allowed:
+            access_log(ip, "forbidden_issue_attachment", 403,
+                       f"{issue_key} by {session.get('name')}")
+            handler._send_json(403, {"ok": False, "error": deny_err})
+            return
+
         from utils.file_ops import sanitize_filename
         from utils.image_optimizer import optimize_and_save_file
         record_attach_dir = os.path.join(ATTACH_DIR, str(local_rec["id"]))
@@ -1392,12 +1467,25 @@ def handle_post_issue_attachment(handler, raw_body, ip):
             log_line("Local 첨부파일 activity 로깅 오류 (무시):", e)
 
         access_log(ip, "issue_attachment_upload_local", 200, f"{issue_key} files: {len(uploaded_files)} by {session.get('name')}")
+        _audit(session, ip, "RECORD_ATTACHMENT_UPLOAD", "record", issue_key,
+               {"files": uploaded_files})
         handler._send_json(200, {
             "ok": True,
             "issue_key": issue_key,
             "files": uploaded_files,
             "count": len(uploaded_files)
         })
+        return
+
+    from services.auth import can_write_data
+    from services.license_manager import is_system_read_only
+    if is_system_read_only():
+        handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+        return
+    if not can_write_data(session):
+        access_log(ip, "forbidden_issue_attachment_jira", 403,
+                   f"{issue_key} by {session.get('name')}")
+        handler._send_json(403, {"ok": False, "error": "조회 전용(Viewer) 권한의 사용자는 첨부파일을 업로드할 수 없습니다."})
         return
 
     uploaded_files = []
@@ -1447,6 +1535,8 @@ def handle_post_issue_attachment(handler, raw_body, ip):
             log_line("Jira 첨부파일 activity 로깅 오류 (무시):", e)
 
     access_log(ip, "issue_attachment_upload", 200, f"{issue_key} files: {len(uploaded_files)} by {session.get('name')}")
+    _audit(session, ip, "ISSUE_ATTACHMENT_UPLOAD", "jira_issue", issue_key,
+           {"files": uploaded_files})
     handler._send_json(200, {
         "ok": True,
         "issue_key": issue_key,
@@ -1473,9 +1563,9 @@ def handle_delete_record_attachment(handler, raw_body, ip):
     if not rec:
         handler._send_json(404, {"ok": False, "error": f"기록 '{key}'을 찾을 수 없습니다."})
         return
-    from services.auth import can_modify_record
-    if not can_modify_record(session, rec):
-        handler._send_json(403, {"ok": False, "error": "해당 업무 카드의 첨부파일을 삭제할 권한이 없습니다."})
+    from services.auth import can_delete_record
+    if not can_delete_record(session, rec):
+        handler._send_json(403, {"ok": False, "error": "작업 카드 삭제 권한이 없습니다. 관리자(Admin) 또는 소속 부서 관리자(Manager)만 삭제할 수 있습니다."})
         return
     from services.data_store import delete_record_attachment
     ok, err = delete_record_attachment(rec["id"], int(attach_id))
@@ -1523,6 +1613,7 @@ def handle_post_record_update(handler, raw_body, ip):
     participants = body.get("participants")
     start_date = body.get("startDate") or body.get("start_date")
     due_date = body.get("dueDate") or body.get("due_date")
+    priority = body.get("priority")
     expected_version = body.get("expected_version") if "expected_version" in body else body.get("version")
 
     updated_rec, err = update_record_details(
@@ -1534,7 +1625,9 @@ def handle_post_record_update(handler, raw_body, ip):
         participants=participants,
         due_date=due_date,
         start_date=start_date,
-        expected_version=expected_version
+        expected_version=expected_version,
+        parent_key=(body.get("parentKey") if "parentKey" in body else _UNSET),
+        priority=priority
     )
 
     if err or not updated_rec:
@@ -1633,9 +1726,9 @@ def handle_delete_record(handler, raw_body, ip):
         handler._send_json(404, {"ok": False, "error": f"레코드 '{record_id_raw}'를 찾을 수 없습니다."})
         return
 
-    from services.auth import can_modify_record
-    if not can_modify_record(session, rec):
-        handler._send_json(403, {"ok": False, "error": "해당 업무 카드를 삭제할 권한이 없습니다."})
+    from services.auth import can_delete_record
+    if not can_delete_record(session, rec):
+        handler._send_json(403, {"ok": False, "error": "작업 카드 삭제 권한이 없습니다. 관리자(Admin) 또는 소속 부서 관리자(Manager)만 삭제할 수 있습니다."})
         return
 
     rec_id = rec["id"]
@@ -1916,6 +2009,18 @@ def handle_push_record_jira(handler, raw_body, ip):
         return
     rec_id = rec["id"]
 
+    # RBAC: viewer bị chặn; chỉ người có quyền sửa card mới được đẩy lên Jira
+    from services.auth import check_record_write_access
+    from services.license_manager import is_system_read_only
+    if is_system_read_only():
+        handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+        return
+    allowed, deny_err = check_record_write_access(session, rec)
+    if not allowed:
+        access_log(ip, "forbidden_push_record_jira", 403, f"{rec_id} by {session.get('name')}")
+        handler._send_json(403, {"ok": False, "error": deny_err})
+        return
+
     if rec.get("jira") and rec["jira"].get("key"):
         handler._send_json(400, {"ok": False, "error": f"이미 Jira({rec['jira']['key']})에 연동된 레코드입니다.", "jira": rec["jira"]})
         return
@@ -1988,6 +2093,8 @@ def handle_push_record_jira(handler, raw_body, ip):
     threading.Thread(target=sync_jira_cache, args=(handler.cfg, False), daemon=True).start()
 
     access_log(ip, "record_push_jira", 200, f"id={rec_id} -> {new_jira_key} by {session.get('name')}")
+    _audit(session, ip, "RECORD_PUSH_JIRA", "record", rec_id,
+           {"jira_key": new_jira_key})
     handler._send_json(200, {
         "ok": True,
         "message": f"Jira 이슈 '{new_jira_key}'로 성공적으로 발행되었습니다.",

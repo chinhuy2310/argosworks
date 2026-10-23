@@ -351,7 +351,14 @@ def _collect_all_documents(cfg):
             if comments_lines:
                 comments_text = "\n[댓글 및 진행 이력]\n" + "\n".join(comments_lines)
 
-        attach_text = f"\n첨부파일 목록: {', '.join(attachments)}" if attachments else ""
+        # attachments co the la list[str] hoac list[dict] ({"name": ...}) tuy theo nguon du lieu
+        attach_names = []
+        for a in attachments:
+            name = a.get("name") if isinstance(a, dict) else a
+            name = str(name or "").strip()
+            if name:
+                attach_names.append(name)
+        attach_text = f"\n첨부파일 목록: {', '.join(attach_names)}" if attach_names else ""
         parent_text = f" | 상위 작업: {parent_key}" if parent_key else ""
         part_text = f" | 참여자: {participants}" if participants else ""
         email_text = f" ({assignee_email})" if assignee_email else ""

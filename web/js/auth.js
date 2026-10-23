@@ -192,6 +192,25 @@ function applyLogin(user){
     el.tabChat.hidden = false;
   }
 
+  // Viewer (read-only): ẩn tab 업무 등록 và nút tạo lịch để tránh 403 sau khi điền form
+  var viewerOnly = (typeof isViewerUser === "function") ? isViewerUser() : (user.role === "viewer");
+  if(el.tabForm){
+    el.tabForm.hidden = viewerOnly;
+  }
+  if(viewerOnly && currentActiveTab === "form" && typeof showTab === "function"){
+    showTab("home");
+  }
+  var addSchedBtn = document.getElementById("btnSchedOpenCreateModal");
+  if(addSchedBtn){
+    addSchedBtn.style.display = viewerOnly ? "none" : "";
+  }
+
+  // Nút "제품 수정" chỉ hiển thị với Admin hoặc Manager phòng Sales/Biz/Exec/Management
+  var pimEditBtn = document.getElementById("pimModalEditBtn");
+  if(pimEditBtn){
+    pimEditBtn.hidden = !(typeof canModifyPimUser === "function" && canModifyPimUser());
+  }
+
   if(!el.schedule.hidden && typeof loadSchedule === "function") loadSchedule();
   if(el.history && !el.history.hidden && typeof loadHistoryActivities === "function") loadHistoryActivities();
   if(typeof renderDeptCards === "function") renderDeptCards();
@@ -246,6 +265,11 @@ function applyLogout(){
   var submitFormLogout = document.getElementById("submitForm");
   if(guestGateLogout) { guestGateLogout.hidden = false; guestGateLogout.style.display = "flex"; }
   if(submitFormLogout) { submitFormLogout.hidden = true; submitFormLogout.style.display = "none"; }
+
+  // 로그아웃 시 숨김 상태 복원 (다음 로그인 사용자를 위해)
+  if(el.tabForm) el.tabForm.hidden = false;
+  var addSchedBtnLogout = document.getElementById("btnSchedOpenCreateModal");
+  if(addSchedBtnLogout) addSchedBtnLogout.style.display = "";
 
   // 로그아웃 시 AI Chat 탭 숨김
   if(el.tabChat){

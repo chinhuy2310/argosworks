@@ -426,35 +426,35 @@ def handle_chat_stream(handler, raw_body, ip):
     
     if effective_lang == "vi":
         system_prompt += (
-            "\n\n=======================================================\n"
-            "⚠️ [NGÔN NGỮ PHẢN HỒI CHÍNH THỨC - TIẾNG VIỆT]:\n"
-            "- Hãy phản hồi 100% bằng tiếng Việt tự nhiên, chuyên nghiệp và lịch sự, bao gồm cả các nút :::quick-actions.\n"
-            "- Tuyệt đối KHÔNG hiển thị các tên hàm/tool kỹ thuật như (get_active_tasks), (search_issues), (get_issue_details), (generate_work_report)... trong câu trả lời! Chỉ dùng ngôn ngữ nghiệp vụ tự nhiên.\n"
-            "- Xưng hô tự nhiên: dùng 'bạn %s' hoặc 'anh/chị %s', tuyệt đối KHÔNG viết kiểu máy móc 'tài khoản hiện tại (%s)'.\n"
-            "- [CRITICAL ARCHITECTURAL MANDATE]: Hệ thống là 100% Local-First ARGOS WORKS.\n"
-            "  Tuyệt đối không nhắc tên 'Jira' trong câu trả lời hay nút bấm!\n"
-            "  Chỉ dùng 'thẻ công việc', 'công việc' (ví dụ: 'Tạo thẻ công việc mới', 'Xem danh sách công việc của tôi').\n"
-            "=======================================================\n" % (user_name, user_name, user_name)
+            f"\n\n=======================================================\n"
+            f"⚠️ [NGÔN NGỮ PHẢN HỒI CHÍNH THỨC - TIẾNG VIỆT]:\n"
+            f"- Hãy phản hồi 100% bằng tiếng Việt tự nhiên, chuyên nghiệp và lịch sự, bao gồm cả các nút :::quick-actions.\n"
+            f"- Tuyệt đối KHÔNG hiển thị các tên hàm/tool kỹ thuật như (get_active_tasks), (search_issues), (get_issue_details), (generate_work_report)... trong câu trả lời! Chỉ dùng ngôn ngữ nghiệp vụ tự nhiên.\n"
+            f"- Xưng hô tự nhiên: dùng 'bạn {user_name}' hoặc 'anh/chị {user_name}', tuyệt đối KHÔNG viết kiểu máy móc 'tài khoản hiện tại ({user_name})'.\n"
+            f"- [CRITICAL ARCHITECTURAL MANDATE]: Hệ thống là 100% Local-First ARGOS WORKS.\n"
+            f"  Tuyệt đối không nhắc tên 'Jira' trong câu trả lời hay nút bấm!\n"
+            f"  Chỉ dùng 'thẻ công việc', 'công việc' (ví dụ: 'Tạo thẻ công việc mới', 'Xem danh sách công việc của tôi').\n"
+            f"=======================================================\n"
         )
     elif effective_lang == "en":
         system_prompt += (
-            "\n\n=======================================================\n"
-            "⚠️ [OFFICIAL RESPONSE LANGUAGE - ENGLISH]:\n"
-            "- Please answer 100% in natural and professional English, including the :::quick-actions.\n"
-            "- Never leak function names (e.g. get_active_tasks, search_issues) in brackets or text. Use natural business terminology.\n"
-            "- Address the user naturally as '%s', not 'current logged-in account (%s)'.\n"
-            "- Do not mention 'Jira'; refer to all tasks as 'work cards' or 'tasks'.\n"
-            "=======================================================\n" % (user_name, user_name)
+            f"\n\n=======================================================\n"
+            f"⚠️ [OFFICIAL RESPONSE LANGUAGE - ENGLISH]:\n"
+            f"- Please answer 100% in natural and professional English, including the :::quick-actions.\n"
+            f"- Never leak function names (e.g. get_active_tasks, search_issues) in brackets or text. Use natural business terminology.\n"
+            f"- Address the user naturally as '{user_name}', not 'current logged-in account ({user_name})'.\n"
+            f"- Do not mention 'Jira'; refer to all tasks as 'work cards' or 'tasks'.\n"
+            f"=======================================================\n"
         )
     else:
         system_prompt += (
-            "\n\n=======================================================\n"
-            "⚠️ [기본 응답 언어 지침 - 한국어]:\n"
-            "- 100% 자연스럽고 정중한 한국어로 명확하게 답변하세요.\n"
-            "- get_active_tasks, search_issues 등 시스템 내부 함수명을 절대로 본문이나 괄호 안에 노출하지 마세요.\n"
-            "- 사용자를 '현재 로그인하신 계정(%s)' 대신 '%s님'으로 정중하게 호칭하세요.\n"
-            "- 하단의 :::quick-actions 추천 버튼들도 한국어로 작성하세요.\n"
-            "=======================================================\n" % (user_name, user_name)
+            f"\n\n=======================================================\n"
+            f"⚠️ [기본 응답 언어 지침 - 한국어]:\n"
+            f"- 100% 자연스럽고 정중한 한국어로 명확하게 답변하세요.\n"
+            f"- get_active_tasks, search_issues 등 시스템 내부 함수명을 절대로 본문이나 괄호 안에 노출하지 마세요.\n"
+            f"- 사용자를 '현재 로그인하신 계정({user_name})' 대신 '{user_name}님'으로 정중하게 호칭하세요.\n"
+            f"- 하단의 :::quick-actions 추천 버튼들도 한국어로 작성하세요.\n"
+            f"=======================================================\n"
         )
     
     # Check for referenced issue keys

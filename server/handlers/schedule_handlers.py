@@ -6,10 +6,42 @@ from utils.logging import access_log
 from config import SCHEDULE_DATE_RE
 from services.auth import account_key
 
+
+def _audit(session, ip, action, target_id, details=None):
+    """Audit trail cho thay đổi lịch; không làm hỏng request nếu lỗi."""
+    try:
+        from services.audit_logger import log_audit
+        log_audit(session, ip, action, "schedule", target_id, details=details)
+    except Exception:
+        pass
+
+
+def _require_schedule_write(handler, session, ip, action_name):
+    """
+    Chặn viewer (read-only tuyệt đối) và chặn khi license hết hạn.
+    Trả True nếu được phép ghi.
+    """
+    from services.auth import can_write_data
+    from services.license_manager import is_system_read_only
+
+    if is_system_read_only():
+        handler._send_json(403, {"ok": False, "error": "라이선스가 만료되어 시스템이 읽기 전용(Read-Only) 상태입니다. 관리자에게 문의하세요."})
+        return False
+    if not can_write_data(session):
+        access_log(ip, "forbidden_" + action_name, 403,
+                   f"{session.get('name')}|{session.get('email')}")
+        handler._send_json(403, {"ok": False,
+                                 "error": "조회 전용(Viewer) 권한의 사용자는 일정을 생성/수정/삭제할 수 없습니다."})
+        return False
+    return True
+
+
 # ---- /api/schedule (POST) — 새 일정 추가 ----
 def handle_schedule_create(handler, raw_body, ip):
     session = handler._get_session_or_401()
     if session is None:
+        return
+    if not _require_schedule_write(handler, session, ip, "schedule_create"):
         return
     try:
         payload = json.loads(raw_body.decode("utf-8") or "{}")
@@ -84,6 +116,8 @@ def handle_schedule_create(handler, raw_body, ip):
         events.append(event)
         write_schedule(events)
     access_log(ip, "schedule_create", 200, "%s %s~%s" % (session["name"], start_date, end_date))
+    _audit(session, ip, "SCHEDULE_CREATE", event["id"],
+           {"type": ev_type, "startDate": start_date, "endDate": end_date})
 
     # Log to JARVIS activity store
     try:
@@ -112,6 +146,8 @@ def handle_schedule_create(handler, raw_body, ip):
 def handle_schedule_update(handler, raw_body, ip):
     session = handler._get_session_or_401()
     if session is None:
+        return
+    if not _require_schedule_write(handler, session, ip, "schedule_update"):
         return
     try:
         payload = json.loads(raw_body.decode("utf-8") or "{}")
@@ -178,12 +214,15 @@ def handle_schedule_update(handler, raw_body, ip):
 
         write_schedule(events)
     access_log(ip, "schedule_update", 200, str(event_id))
+    _audit(session, ip, "SCHEDULE_UPDATE", event_id)
     handler._send_json(200, {"ok": True, "event": target})
 
 # ---- /api/schedule/delete (POST) — 본인 일정만 삭제 가능 ----
 def handle_schedule_delete(handler, raw_body, ip):
     session = handler._get_session_or_401()
     if session is None:
+        return
+    if not _require_schedule_write(handler, session, ip, "schedule_delete"):
         return
     try:
         payload = json.loads(raw_body.decode("utf-8") or "{}")
@@ -204,12 +243,15 @@ def handle_schedule_delete(handler, raw_body, ip):
         events = [e for e in events if str(e.get("id")) != str(event_id)]
         write_schedule(events)
     access_log(ip, "schedule_delete", 200, str(event_id))
+    _audit(session, ip, "SCHEDULE_DELETE", event_id)
     handler._send_json(200, {"ok": True})
 
 # ---- /api/schedule/approve (POST) — 휴가/일정 승인 또는 반려 (Manager/Admin 전용) ----
 def handle_schedule_approve(handler, raw_body, ip):
     session = handler._get_session_or_401()
     if session is None:
+        return
+    if not _require_schedule_write(handler, session, ip, "schedule_approve"):
         return
     from services.auth import is_manager_or_admin
     if not is_manager_or_admin(session):
@@ -290,5 +332,7 @@ def handle_schedule_approve(handler, raw_body, ip):
         pass
 
     access_log(ip, f"schedule_{action}", 200, f"id={event_id} status={new_status}")
+    _audit(session, ip, "SCHEDULE_" + action.upper(), event_id,
+           {"status": new_status, "reason": reason})
     handler._send_json(200, {"ok": True, "event": target})
 

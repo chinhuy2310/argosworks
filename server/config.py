@@ -84,7 +84,43 @@ DEFAULT_CONFIG = {
     "max_upload_mb": 25
 }
 
-DEFAULT_DEPARTMENTS = []
+DEFAULT_DEPARTMENTS = [
+    {
+        "id": "dev",
+        "name": "연구개발팀 (R&D)",
+        "colorIndex": 1,
+        "localPrefix": "DEV",
+        "customCategories": "기획·전략, 아키텍처 설계, 백엔드 개발, 프론트엔드 개발, UI/UX 디자인, 코드 리뷰, QA·검증, 버그 수정"
+    },
+    {
+        "id": "sales",
+        "name": "영업마케팅팀 (Sales)",
+        "colorIndex": 2,
+        "localPrefix": "SALES",
+        "customCategories": "기획·전략, 시장 조사, 고객 미팅, 제안서 작성, 견적·계약, 마케팅 홍보, 고객 지원"
+    },
+    {
+        "id": "mgmt",
+        "name": "경영기획팀 (Management)",
+        "colorIndex": 3,
+        "localPrefix": "MGMT",
+        "customCategories": "경영 전략, 사업 기획, 예산·재무, KPI 실적 관리, 투자 유치, 대외 제휴"
+    },
+    {
+        "id": "hr",
+        "name": "인사총무팀 (HR)",
+        "colorIndex": 4,
+        "localPrefix": "HR",
+        "customCategories": "채용·면접, 인사 평가, 총무·자산 관리, 복리후생, 사내 행사, 교육 훈련"
+    },
+    {
+        "id": "hq",
+        "name": "본사 (HQ)",
+        "colorIndex": 5,
+        "localPrefix": "HQ",
+        "customCategories": "기획·전략, 전사 운영, 총괄 보고, 대외 협력"
+    }
+]
 
 CATEGORY_KEYWORDS = [
     ("기획·전략", ["기획", "전략", "제안", "기획서"]),

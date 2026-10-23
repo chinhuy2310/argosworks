@@ -197,6 +197,7 @@ if ENGINE == "sqlite":
                         ("due_date", "TEXT NOT NULL DEFAULT ''"),
                         ("is_scheduled", "INTEGER NOT NULL DEFAULT 1"),
                         ("is_private", "INTEGER NOT NULL DEFAULT 0"),
+                        ("priority", "TEXT NOT NULL DEFAULT '보통'"),
                         ("version", "INTEGER NOT NULL DEFAULT 1"),
                         ("updated_at", "TEXT NOT NULL DEFAULT ''")
                     ]:

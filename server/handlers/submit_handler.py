@@ -64,6 +64,9 @@ def handle_submit(handler, raw_body, ip):
         parts_list = [p for p in parts_list if p.lower() != assignee_name.lower()]
         participants = ", ".join(parts_list)
     followup = (fields.get("followup") or "").lower() in ("1", "true", "on", "yes")
+    priority = (fields.get("priority") or "보통").strip()
+    if priority not in ("낮음", "보통", "높음", "긴급"):
+        priority = "보통" 
     start_date = (fields.get("startDate") or fields.get("start_date") or fields.get("date") or "").strip()
     due_date = (fields.get("dueDate") or fields.get("due_date") or fields.get("endDate") or fields.get("end_date") or "").strip()
     if not start_date and due_date:
@@ -193,6 +196,7 @@ def handle_submit(handler, raw_body, ip):
         "cardCode": card_code,
         "attachments": saved_attachments,
         "parentKey": parent_key,
+        "priority": priority,
         "jira": jira
     }
     append_record(record)
@@ -210,7 +214,7 @@ def handle_submit(handler, raw_body, ip):
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "summary": title or summary or card_code,
             "status": (jira.get("statusName") if jira else "진행"),
-            "priority": "보통",
+            "priority": priority,
             "issue_type": category,
             "assignee_name": assignee_name,
             "assignee_dept": dept["name"],
