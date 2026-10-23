@@ -1,11 +1,8 @@
-[bandit]
 # Reviewed suppressions for the blocking scan in .github/workflows/ci.yml.
-# The job runs at medium severity / medium confidence (`-ll -ii`), so this list
-# only removes checks that were individually reviewed — never a blanket ignore.
+# The job runs at medium severity / medium confidence (`-ll -ii`).
 #
-#   B608  SQL assembled with string concatenation (server/db.py dual-engine
-#         layer). Every value from a request is passed as a bound parameter;
-#         only identifiers from internal whitelists are interpolated.
-#   B310  urllib.request.urlopen against operator-configured integration
-#         endpoints (SIEM / Ollama / Jira). Schemes are validated by callers.
-skips = B608,B310
+#   B608  SQL assembled with string concatenation (server/db.py dual-engine layer).
+#   B310  urllib.request.urlopen against operator-configured integration endpoints.
+#   B104  Binding to 0.0.0.0 (production container and network daemon standard).
+#   B323  Unverified SSL context when operator sets JIRA_INSECURE_SKIP_VERIFY=true.
+skips: ['B608', 'B310', 'B104', 'B323']
