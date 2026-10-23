@@ -1439,6 +1439,7 @@
                   <option value="voyage">Voyage AI</option>
                   <option value="openai">OpenAI</option>
                   <option value="gemini">Google Gemini</option>
+                  <option value="ollama">Ollama (Local / LAN)</option>
                   <option value="custom">사용자 정의 (Custom)</option>
                 </select>
               </div>
@@ -1447,6 +1448,8 @@
                 <label for="setVoyageModel" class="settings-label">임베딩 모델 (Embedding Model)</label>
                 <input type="text" id="setVoyageModel" class="settings-input" list="voyage-model-options" placeholder="임베딩 모델명 입력 (선택한 제공자에 맞춤)..." autocomplete="off">
                 <datalist id="voyage-model-options">
+                  <option value="nomic-embed-text">nomic-embed-text (Ollama / Local 권장 • 768d)</option>
+                  <option value="bge-m3">bge-m3 (다국어 / 한국어 고성능 • 1024d)</option>
                   <option value="voyage-4-lite">voyage-4-lite (32k context • 1024d)</option>
                   <option value="voyage-3.5-lite">voyage-3.5-lite (1024d)</option>
                   <option value="voyage-3-lite">voyage-3-lite (1024d • 표준 추천)</option>

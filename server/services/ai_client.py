@@ -176,7 +176,14 @@ def _execute_ai_raw_single(prov, api_key, prompt, max_tokens, timeout):
                 "messages": [{"role": "user", "content": prompt}]
             }).encode("utf-8")
         else:
-            url = f"{base_url}/chat/completions"
+            if base_url.endswith("/chat/completions"):
+                url = base_url
+            elif base_url.endswith("/v1"):
+                url = f"{base_url}/chat/completions"
+            elif "/" not in base_url.split("://", 1)[-1]:
+                url = f"{base_url}/v1/chat/completions"
+            else:
+                url = f"{base_url}/chat/completions"
             headers = {
                 "Authorization": f"Bearer {api_key or 'ollama'}",
                 "content-type": "application/json"
@@ -328,7 +335,14 @@ def _execute_ai_chat_completion_single(prov, api_key, messages, tools, tool_choi
             return {"choices": [{"message": msg}]}, None, ""
 
         else:
-            url = f"{base_url}/chat/completions"
+            if base_url.endswith("/chat/completions"):
+                url = base_url
+            elif base_url.endswith("/v1"):
+                url = f"{base_url}/chat/completions"
+            elif "/" not in base_url.split("://", 1)[-1]:
+                url = f"{base_url}/v1/chat/completions"
+            else:
+                url = f"{base_url}/chat/completions"
             headers = {
                 "Authorization": f"Bearer {api_key or 'ollama'}",
                 "content-type": "application/json"

@@ -75,7 +75,7 @@ async function loadSettings() {
     if (setVoyageProvider) {
       setVoyageProvider.value = s.VOYAGE_PROVIDER || "voyage";
       if (voyageBaseUrlField) {
-        voyageBaseUrlField.style.display = (setVoyageProvider.value === "custom") ? "block" : "none";
+        voyageBaseUrlField.style.display = (setVoyageProvider.value === "custom" || setVoyageProvider.value === "ollama") ? "block" : "none";
       }
     }
     if (setVoyageModel && s.VOYAGE_MODEL) setVoyageModel.value = s.VOYAGE_MODEL;
@@ -706,9 +706,13 @@ var VECTOR_PROVIDER_DEFAULTS = {
     base_url: "https://generativelanguage.googleapis.com/v1beta",
     model: "gemini-embedding-001"
   },
+  ollama: {
+    base_url: "http://localhost:11434/v1/embeddings",
+    model: "nomic-embed-text"
+  },
   custom: {
     base_url: "http://localhost:11434/v1/embeddings",
-    model: ""
+    model: "nomic-embed-text"
   }
 };
 
@@ -722,7 +726,7 @@ function onVoyageProviderChange() {
   var baseUrlField = document.getElementById("voyageBaseUrlField");
 
   if (baseUrlField) {
-    baseUrlField.style.display = (prov === "custom") ? "block" : "none";
+    baseUrlField.style.display = (prov === "custom" || prov === "ollama") ? "block" : "none";
   }
 
   if (defaults) {

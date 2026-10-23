@@ -339,6 +339,51 @@ class TestAuditRemediationSuite(unittest.TestCase):
         # 127.0.0.1 allowed only when explicitly allow_private=True
         self.assertTrue(validate_external_url("http://127.0.0.1:11434", allow_private=True, require_https=False))
 
+        # LAN IPs (192.168.x.x, 10.x.x.x) allowed for offline AI (allow_private=True)
+        self.assertTrue(validate_external_url("http://192.168.1.100:8000/v1", allow_private=True, require_https=False))
+        self.assertTrue(validate_external_url("http://10.0.0.5:1234/v1", allow_private=True, require_https=False))
+
+        # LAN IPs blocked by default for public webhooks / external services
+        with self.assertRaises(ValueError):
+            validate_external_url("http://192.168.1.100:8000/v1")
+        with self.assertRaises(ValueError):
+            validate_external_url("https://192.168.1.100:8000/v1")
+
+    def test_offline_ai_and_vector_configuration(self):
+        """오프라인 AI (Custom LAN vLLM / LM Studio) 및 로컬 임베딩 설정 검증"""
+        from services.vector_store import is_voyage_configured, get_embedding_provider_info
+
+        # Ollama / Custom local embedding is configured even without API key
+        cfg_offline_ollama = {
+            "voyage": {
+                "enabled": True,
+                "provider": "ollama",
+                "base_url": "http://localhost:11434/v1/embeddings",
+                "model": "nomic-embed-text"
+            }
+        }
+        self.assertTrue(is_voyage_configured(cfg_offline_ollama))
+
+        cfg_offline_custom = {
+            "voyage": {
+                "enabled": True,
+                "provider": "custom",
+                "base_url": "http://192.168.1.50:8000/v1/embeddings",
+                "model": "bge-m3"
+            }
+        }
+        self.assertTrue(is_voyage_configured(cfg_offline_custom))
+
+        # Cloud provider without key must NOT be configured
+        cfg_cloud_voyage = {
+            "voyage": {
+                "enabled": True,
+                "provider": "voyage",
+                "api_key": ""
+            }
+        }
+        self.assertFalse(is_voyage_configured(cfg_cloud_voyage))
+
     def test_remediation_2_4_trusted_proxy_and_log_masking(self):
         """2.4: 신뢰할 수 없는 프록시의 X-Forwarded-For 위조 방어 및 로그 쿼리스트링 마스킹"""
         from utils.logging import mask_query_string
