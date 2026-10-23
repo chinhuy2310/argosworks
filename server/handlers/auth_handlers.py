@@ -139,11 +139,11 @@ def handle_account_register(handler, raw_body, ip):
             from services.notification_service import add_notification
             add_notification(
                 recipient_name="관리자",
-                notif_type="assign",
+                notif_type="signup",
                 title="🔔 신규 계정 가입 승인 요청",
                 content=f"{name} ({username} / {org}) 님이 계정 발급 승인을 요청했습니다.",
                 tag="가입요청",
-                tag_type="urgent"
+                tag_type="signup"
             )
         except Exception:
             pass

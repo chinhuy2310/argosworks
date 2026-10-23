@@ -784,11 +784,17 @@ body:has(#viewHome:not([hidden])) .sidebar-toggle-btn {
   height: 16px;
   stroke: currentColor;
 }
+.notif-item-icon.type-review { background: rgba(124, 58, 237, 0.14); color: #7c3aed; }
+.notif-item-icon.type-signup { background: rgba(2, 132, 199, 0.14); color: #0284c7; }
 .notif-item-icon.type-assign { background: rgba(59, 130, 246, 0.14); color: #3b82f6; }
 .notif-item-icon.type-comment { background: rgba(16, 185, 129, 0.14); color: #10b981; }
 .notif-item-icon.type-deadline { background: rgba(239, 68, 68, 0.14); color: #ef4444; }
 .notif-item-icon.type-status { background: rgba(245, 158, 11, 0.14); color: #f59e0b; }
+.notif-item-icon.type-status-done { background: rgba(22, 163, 74, 0.15); color: #16a34a; }
 .notif-item-icon.type-jira { background: rgba(99, 102, 241, 0.14); color: #6366f1; }
+.notif-item-icon.type-schedule { background: rgba(8, 145, 178, 0.14); color: #0891b2; }
+.notif-item-icon.type-mention { background: rgba(225, 29, 72, 0.14); color: #e11d48; }
+.notif-item-icon.type-security { background: rgba(71, 85, 105, 0.14); color: #475569; }
 
 .notif-item-content {
   flex: 1;
@@ -815,6 +821,11 @@ body:has(#viewHome:not([hidden])) .sidebar-toggle-btn {
 .notif-item-tag.tag-urgent { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
 .notif-item-tag.tag-info { background: rgba(2, 132, 199, 0.12); color: var(--accent-2); }
 .notif-item-tag.tag-done { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.notif-item-tag.tag-review { background: rgba(124, 58, 237, 0.15); color: #7c3aed; font-weight: 700; }
+.notif-item-tag.tag-signup { background: rgba(239, 68, 68, 0.15); color: #dc2626; font-weight: 700; }
+.notif-item-tag.tag-mention { background: rgba(225, 29, 72, 0.15); color: #e11d48; font-weight: 600; }
+.notif-item-tag.tag-schedule { background: rgba(8, 145, 178, 0.15); color: #0891b2; font-weight: 600; }
+.notif-item-tag.tag-jira { background: rgba(99, 102, 241, 0.15); color: #6366f1; font-weight: 600; }
 
 .notif-item-desc {
   font-size: 11.5px;

@@ -242,18 +242,101 @@
     }
   }
 
-  function getIconSvg(type){
-    switch(type){
+  function resolveNotificationCategory(item){
+    if(!item) return "assign";
+    var type = String(item.type || "").toLowerCase().trim();
+    var tag = String(item.tag || "").toLowerCase().trim();
+    var tagType = String(item.tag_type || "").toLowerCase().trim();
+    var title = String(item.title || "").toLowerCase().trim();
+
+    // 1. Phê duyệt tài khoản mới (Account Signup Approval)
+    if(type === "signup" || tagType === "signup" || tag === "가입요청" || tag === "가입" || title.indexOf("가입 승인") !== -1 || title.indexOf("신규 계정") !== -1){
+      return "signup";
+    }
+
+    // 2. Yêu cầu xem xét / xét duyệt công việc (Review Request)
+    if(type === "review" || tagType === "review" || tag === "검토요청" || tag === "검토" || title.indexOf("검토 요청") !== -1 || title.indexOf("검토") !== -1){
+      return "review";
+    }
+
+    // 3. Hạn chót, D-Day, khẩn cấp (Deadline / Urgent)
+    if(type === "deadline" || tag === "지연" || tag === "d-day" || tag === "긴급" || title.indexOf("마감") !== -1 || title.indexOf("지연") !== -1 || tagType === "urgent"){
+      return "deadline";
+    }
+
+    // 4. Bình luận mới (Comment)
+    if(type === "comment" || tag === "댓글" || title.indexOf("댓글") !== -1){
+      return "comment";
+    }
+
+    // 5. Thay đổi trạng thái công việc (Status Change / Done)
+    if(type === "status" || tag === "상태" || title.indexOf("상태 변경") !== -1){
+      if(tag === "완료" || title.indexOf("완료") !== -1 || title.indexOf("done") !== -1 || tagType === "done"){
+        return "status-done";
+      }
+      return "status";
+    }
+
+    // 6. Liên kết Jira (Jira Sync / Push)
+    if(type === "jira" || tag.indexOf("jira") !== -1 || title.indexOf("jira") !== -1){
+      return "jira";
+    }
+
+    // 7. Lịch biểu / Lịch công tác (Schedule / Calendar)
+    if(type === "schedule" || tag === "일정" || tag === "캘린더" || title.indexOf("일정") !== -1){
+      return "schedule";
+    }
+
+    // 8. Cảnh báo bảo mật / Hệ thống (Security / System / License)
+    if(type === "security" || type === "system" || tag === "보안" || tag === "시스템" || tag === "라이선스" || title.indexOf("라이선스") !== -1 || title.indexOf("보안") !== -1){
+      return "security";
+    }
+
+    // 9. Nhắc tên (@mention)
+    if(type === "mention" || tag === "멘션" || title.indexOf("멘션") !== -1){
+      return "mention";
+    }
+
+    // 10. Phân công người phụ trách (Assignment)
+    return "assign";
+  }
+
+  function getIconSvg(type, item){
+    var cat = item ? resolveNotificationCategory(item) : (type || "assign");
+    switch(cat){
+      case "review":
+        // Clipboard Checkmark - Đánh giá / Phê duyệt công việc
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>';
+      case "signup":
+        // User with Shield / Key - Duyệt tài khoản người dùng mới
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="16 11 18 13 22 9"></polyline></svg>';
       case "deadline":
-        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+        // Alarm Clock - Hạn chót / Quá hạn khẩn cấp
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"></circle><polyline points="12 9 12 13 15 15"></polyline><line x1="5" y1="3" x2="2" y2="6"></line><line x1="19" y1="3" x2="22" y2="6"></line></svg>';
       case "comment":
-        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
+        // Chat Bubble - Thảo luận / Bình luận
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path><line x1="8" y1="9" x2="16" y2="9"></line><line x1="8" y1="13" x2="13" y2="13"></line></svg>';
       case "status":
+        // Status Transition Arrows - Chuyển đổi trạng thái
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>';
+      case "status-done":
+        // Check Circle - Công việc đã hoàn thành
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
       case "jira":
+        // Jira Sync / Integration Link
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>';
+      case "schedule":
+        // Calendar Event - Lịch trình / Kế hoạch
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
+      case "mention":
+        // @ Mention - Nhắc tên thành viên
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg>';
+      case "security":
+        // Shield - Bảo mật / Giấy phép
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>';
       case "assign":
       default:
+        // User with Plus - Phân công công việc mới
         return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>';
     }
   }
@@ -316,15 +399,19 @@
     var html = "";
     filtered.forEach(function(item){
       var isUnread = isItemUnread(item);
-      var typeClass = "type-" + (item.type || "assign");
+      var category = resolveNotificationCategory(item);
+      var typeClass = "type-" + category;
       var tagHtml = "";
       if(item.tag){
-        var tagTypeClass = "tag-" + (item.tag_type || "info");
+        var tagTypeClass = item.tag_type ? ("tag-" + item.tag_type) : "";
+        if(category === "review") tagTypeClass = "tag-review";
+        else if(category === "signup") tagTypeClass = "tag-signup";
+        else if(!tagTypeClass) tagTypeClass = "tag-info";
         tagHtml = '<span class="notif-item-tag ' + tagTypeClass + '">' + escapeHtml(item.tag) + '</span>';
       }
 
       html += '<div class="notif-item ' + (isUnread ? 'unread' : '') + '" data-id="' + escapeHtml(item.id) + '" data-rec-id="' + escapeHtml(item.record_id || '') + '" data-tag="' + escapeHtml(item.tag || '') + '" data-title="' + escapeHtml(item.title || '') + '">' +
-        '<div class="notif-item-icon ' + typeClass + '">' + getIconSvg(item.type) + '</div>' +
+        '<div class="notif-item-icon ' + typeClass + '">' + getIconSvg(category, item) + '</div>' +
         '<div class="notif-item-content">' +
           '<div class="notif-item-title">' +
             '<span>' + escapeHtml(item.title) + '</span>' +
